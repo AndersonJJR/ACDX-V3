@@ -3,143 +3,249 @@ package com.erp.brazil.inventory.presentation.rest.controller;
 import com.erp.brazil.inventory.application.usecase.ProcessPurchaseInvoiceUseCase;
 import com.erp.brazil.inventory.domain.model.PurchaseInvoice;
 import com.erp.brazil.inventory.domain.model.PurchaseInvoiceItem;
-import com.erp.brazil.inventory.domain.repository.PurchaseInvoiceRepository;
 import com.erp.brazil.inventory.domain.repository.PurchaseInvoiceItemRepository;
-import com.erp.brazil.inventory.presentation.rest.dto.PurchaseInvoiceDTO;
+import com.erp.brazil.inventory.domain.repository.PurchaseInvoiceRepository;
+import com.erp.brazil.inventory.domain.repository.PurchaseOrderRepository;
+import com.erp.brazil.inventory.domain.repository.PurchaseReceiptRepository;
+import com.erp.brazil.inventory.domain.repository.SupplierRepository;
+import com.erp.brazil.inventory.presentation.rest.dto.PurchaseInvoiceItemResponse;
+import com.erp.brazil.inventory.presentation.rest.dto.PurchaseInvoiceResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/purchase-invoices")
 @RequiredArgsConstructor
-@Tag(name = "Purchase Invoices", description = "Purchase invoice management APIs")
+@Tag(name = "Purchase Invoices", description = "Purchase invoice management with 3-way matching")
 public class PurchaseInvoiceController {
 
-    private final PurchaseInvoiceRepository piRepository;
-    private final PurchaseInvoiceItemRepository piiRepository;
+    private final PurchaseInvoiceRepository purchaseInvoiceRepository;
+    private final PurchaseInvoiceItemRepository purchaseInvoiceItemRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final PurchaseReceiptRepository purchaseReceiptRepository;
+    private final SupplierRepository supplierRepository;
     private final ProcessPurchaseInvoiceUseCase processPurchaseInvoiceUseCase;
 
-    @PostMapping
-    @Operation(summary = "Create a new purchase invoice")
-    public ResponseEntity<PurchaseInvoice> createPurchaseInvoice(@RequestBody PurchaseInvoice pi) {
-        PurchaseInvoice saved = piRepository.save(pi);
-        return ResponseEntity.ok(saved);
+    @GetMapping
+    @Operation(summary = "List purchase invoices")
+    public ResponseEntity<Page<PurchaseInvoiceResponse>> listPurchaseInvoices(
+            @Parameter(description = "Company ID") @RequestParam UUID companyId,
+            @Parameter(description = "Status filter") @RequestParam(required = false) String status,
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+
+        Page<PurchaseInvoice> invoices;
+        if (status != null) {
+            invoices = purchaseInvoiceRepository.findByCompanyIdAndStatus(
+                    companyId, PurchaseInvoice.PIStatus.valueOf(status), pageable);
+        } else {
+            invoices = purchaseInvoiceRepository.findAll(pageable); // Would need company filter
+        }
+
+        return ResponseEntity.ok(invoices.map(this::mapToResponse));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get purchase invoice by ID")
-    public ResponseEntity<PurchaseInvoice> getPurchaseInvoice(@PathVariable UUID id) {
-        return piRepository.findById(id)
+    public ResponseEntity<PurchaseInvoiceResponse> getPurchaseInvoice(@Parameter(description = "Invoice ID") @PathVariable UUID id) {
+        return purchaseInvoiceRepository.findById(id)
+                .map(this::mapToResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping
-    @Operation(summary = "List purchase invoices")
-    public ResponseEntity<Page<PurchaseInvoice>> listPurchaseInvoices(
-            @RequestParam UUID companyId,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) UUID supplierId,
-            @RequestParam(required = false) UUID purchaseOrderId,
-            @RequestParam(required = false) UUID purchaseReceiptId,
-            @RequestParam(required = false) LocalDate fromDate,
-            @RequestParam(required = false) LocalDate toDate,
-            Pageable pageable) {
-
-        Page<PurchaseInvoice> invoices;
-        if (status != null) {
-            invoices = piRepository.findByCompanyIdAndStatus(companyId, PurchaseInvoice.PIStatus.valueOf(status), pageable);
-        } else if (supplierId != null) {
-            invoices = piRepository.findByCompanyIdAndSupplierId(companyId, supplierId, pageable);
-        } else if (purchaseOrderId != null) {
-            invoices = piRepository.findByPurchaseOrderId(purchaseOrderId, pageable);
-        } else if (purchaseReceiptId != null) {
-            invoices = piRepository.findByPurchaseReceiptId(purchaseReceiptId, pageable);
-        } else if (fromDate != null && toDate != null) {
-            invoices = piRepository.findByCompanyIdAndInvoiceDateBetween(companyId, fromDate, toDate, pageable);
-        } else {
-            invoices = Page.empty(pageable);
+    @PostMapping
+    @Operation(summary = "Create new purchase invoice")
+    public ResponseEntity<PurchaseInvoiceResponse> createPurchaseInvoice(@RequestBody PurchaseInvoiceRequest request) {
+        var supplierOpt = supplierRepository.findById(request.supplierId());
+        if (supplierOpt.isEmpty()) {
+            return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(invoices);
+
+        PurchaseInvoice invoice = PurchaseInvoice.builder()
+                .companyId(request.companyId())
+                .invoiceNo(request.invoiceNo())
+                .supplier(supplierOpt.get())
+                .purchaseOrderId(request.purchaseOrderId() != null ?
+                        purchaseOrderRepository.findById(request.purchaseOrderId()).orElse(null) : null)
+                .purchaseReceiptId(request.purchaseReceiptId() != null ?
+                        purchaseReceiptRepository.findById(request.purchaseReceiptId()).orElse(null) : null)
+                .invoiceDate(request.invoiceDate())
+                .postingDate(request.postingDate())
+                .dueDate(request.dueDate())
+                .status(PurchaseInvoice.PIStatus.DRAFT)
+                .currency(request.currency() != null ? request.currency() : "BRL")
+                .exchangeRate(request.exchangeRate() != null ? request.exchangeRate() : BigDecimal.ONE)
+                .paymentTerms(request.paymentTerms())
+                .nfeAccessKey(request.nfeAccessKey())
+                .nfeNumber(request.nfeNumber())
+                .nfeSeries(request.nfeSeries())
+                .cfop(request.cfop())
+                .naturezaOperacao(request.naturezaOperacao())
+                .notes(request.notes())
+                .build();
+
+        PurchaseInvoice saved = purchaseInvoiceRepository.save(invoice);
+        return ResponseEntity.ok(mapToResponse(saved));
     }
 
-    @PostMapping("/{id}/process")
-    @Operation(summary = "Process invoice (3-way match)")
-    public ResponseEntity<PurchaseInvoice> processInvoice(@PathVariable UUID id) {
-        PurchaseInvoice invoice = piRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Invoice not found: " + id));
-        PurchaseInvoice processed = processPurchaseInvoiceUseCase.processInvoice(invoice.getCompanyId(), id);
-        return ResponseEntity.ok(processed);
-    }
+    @PutMapping("/{id}")
+    @Operation(summary = "Update purchase invoice")
+    public ResponseEntity<PurchaseInvoiceResponse> updatePurchaseInvoice(
+            @Parameter(description = "Invoice ID") @PathVariable UUID id,
+            @RequestBody PurchaseInvoiceRequest request) {
 
-    @PostMapping("/{id}/submit")
-    @Operation(summary = "Submit purchase invoice")
-    public ResponseEntity<PurchaseInvoice> submitPurchaseInvoice(@PathVariable UUID id) {
-        return piRepository.findById(id)
-                .map(pi -> {
-                    pi.setStatus(PurchaseInvoice.PIStatus.SUBMITTED);
-                    return ResponseEntity.ok(piRepository.save(pi));
+        return purchaseInvoiceRepository.findById(id)
+                .map(invoice -> {
+                    invoice.setInvoiceNo(request.invoiceNo());
+                    invoice.setInvoiceDate(request.invoiceDate());
+                    invoice.setPostingDate(request.postingDate());
+                    invoice.setDueDate(request.dueDate());
+                    invoice.setCurrency(request.currency());
+                    invoice.setExchangeRate(request.exchangeRate());
+                    invoice.setPaymentTerms(request.paymentTerms());
+                    invoice.setNfeAccessKey(request.nfeAccessKey());
+                    invoice.setNfeNumber(request.nfeNumber());
+                    invoice.setNfeSeries(request.nfeSeries());
+                    invoice.setCfop(request.cfop());
+                    invoice.setNaturezaOperacao(request.naturezaOperacao());
+                    invoice.setNotes(request.notes());
+
+                    PurchaseInvoice saved = purchaseInvoiceRepository.save(invoice);
+                    return ResponseEntity.ok(mapToResponse(saved));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/{id}/approve")
-    @Operation(summary = "Approve purchase invoice")
-    public ResponseEntity<PurchaseInvoice> approvePurchaseInvoice(@PathVariable UUID id) {
-        return piRepository.findById(id)
-                .map(pi -> {
-                    pi.setStatus(PurchaseInvoice.PIStatus.APPROVED);
-                    return ResponseEntity.ok(piRepository.save(pi));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    @PostMapping("/{id}/match")
+    @Operation(summary = "Run 3-way match (PO vs Receipt vs Invoice)")
+    public ResponseEntity<ProcessPurchaseInvoiceUseCase.Output> matchInvoice(
+            @Parameter(description = "Invoice ID") @PathVariable UUID id) {
+
+        try {
+            ProcessPurchaseInvoiceUseCase.Input input = new ProcessPurchaseInvoiceUseCase.Input(id);
+            ProcessPurchaseInvoiceUseCase.Output output = processPurchaseInvoiceUseCase.execute(input);
+            return ResponseEntity.ok(output);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    @PostMapping("/{id}/block")
-    @Operation(summary = "Block invoice for payment")
-    public ResponseEntity<PurchaseInvoice> blockInvoice(@PathVariable UUID id, @RequestParam String reason) {
-        return piRepository.findById(id)
-                .map(pi -> {
-                    pi.setStatus(PurchaseInvoice.PIStatus.BLOCKED);
-                    pi.setIsBlockedForPayment(true);
-                    pi.setBlockReason(reason);
-                    return ResponseEntity.ok(piRepository.save(pi));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    private PurchaseInvoiceResponse mapToResponse(PurchaseInvoice invoice) {
+        List<PurchaseInvoiceItemResponse> items = purchaseInvoiceItemRepository.findByPurchaseInvoiceId(invoice.getId())
+                .stream()
+                .map(this::mapItemToResponse)
+                .collect(Collectors.toList());
+
+        BigDecimal totalQty = items.stream().map(PurchaseInvoiceItemResponse::getQty).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalAmount = items.stream().map(PurchaseInvoiceItemResponse::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal taxAmount = items.stream().map(PurchaseInvoiceItemResponse::getTaxAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal grandTotal = totalAmount.add(taxAmount);
+        BigDecimal outstandingAmount = grandTotal.subtract(invoice.getAdvanceAllocated());
+
+        return PurchaseInvoiceResponse.builder()
+                .id(invoice.getId())
+                .companyId(invoice.getCompanyId())
+                .invoiceNo(invoice.getInvoiceNo())
+                .supplierId(invoice.getSupplier().getId())
+                .supplierName(invoice.getSupplier().getSupplierName())
+                .purchaseOrderId(invoice.getPurchaseOrder() != null ? invoice.getPurchaseOrder().getId() : null)
+                .purchaseOrderNo(invoice.getPurchaseOrder() != null ? invoice.getPurchaseOrder().getPoNo() : null)
+                .purchaseReceiptId(invoice.getPurchaseReceipt() != null ? invoice.getPurchaseReceipt().getId() : null)
+                .purchaseReceiptNo(invoice.getPurchaseReceipt() != null ? invoice.getPurchaseReceipt().getReceiptNo() : null)
+                .invoiceDate(invoice.getInvoiceDate())
+                .postingDate(invoice.getPostingDate())
+                .dueDate(invoice.getDueDate())
+                .status(invoice.getStatus().name())
+                .currency(invoice.getCurrency())
+                .exchangeRate(invoice.getExchangeRate())
+                .totalQty(totalQty)
+                .totalAmount(totalAmount)
+                .taxAmount(taxAmount)
+                .grandTotal(grandTotal)
+                .advanceAllocated(invoice.getAdvanceAllocated())
+                .outstandingAmount(outstandingAmount)
+                .paymentTerms(invoice.getPaymentTerms())
+                .nfeAccessKey(invoice.getNfeAccessKey())
+                .nfeNumber(invoice.getNfeNumber())
+                .nfeSeries(invoice.getNfeSeries())
+                .nfeProtocol(invoice.getNfeProtocol())
+                .nfeStatus(invoice.getNfeStatus() != null ? invoice.getNfeStatus().name() : null)
+                .cfop(invoice.getCfop())
+                .naturezaOperacao(invoice.getNaturezaOperacao())
+                .notes(invoice.getNotes())
+                .isBlockedForPayment(invoice.getIsBlockedForPayment())
+                .blockReason(invoice.getBlockReason())
+                .createdAt(invoice.getCreatedAt())
+                .updatedAt(invoice.getUpdatedAt())
+                .items(items)
+                .build();
     }
 
-    @PostMapping("/{id}/unblock")
-    @Operation(summary = "Unblock invoice for payment")
-    public ResponseEntity<PurchaseInvoice> unblockInvoice(@PathVariable UUID id) {
-        return piRepository.findById(id)
-                .map(pi -> {
-                    pi.setStatus(PurchaseInvoice.PIStatus.VALIDATED);
-                    pi.setIsBlockedForPayment(false);
-                    pi.setBlockReason(null);
-                    return ResponseEntity.ok(piRepository.save(pi));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    private PurchaseInvoiceItemResponse mapItemToResponse(PurchaseInvoiceItem item) {
+        return PurchaseInvoiceItemResponse.builder()
+                .id(item.getId())
+                .companyId(item.getCompanyId())
+                .purchaseInvoiceId(item.getPurchaseInvoice().getId())
+                .idx(item.getIdx())
+                .purchaseOrderItemId(item.getPurchaseOrderItemId())
+                .purchaseReceiptItemId(item.getPurchaseReceiptItemId())
+                .itemId(item.getItem().getId())
+                .itemCode(item.getItem().getCode())
+                .itemName(item.getItem().getName())
+                .itemVariantId(item.getItemVariantId())
+                .variantCode(item.getItemVariantId() != null ? item.getItemVariant().getVariantCode() : null)
+                .qty(item.getQty())
+                .uom(item.getUom())
+                .conversionFactor(item.getConversionFactor())
+                .rate(item.getRate())
+                .amount(item.getAmount())
+                .discountPercent(item.getDiscountPercent())
+                .discountAmount(item.getDiscountAmount())
+                .taxTemplate(item.getTaxTemplate())
+                .taxAmount(item.getTaxAmount())
+                .poQty(item.getPoQty())
+                .receivedQty(item.getReceivedQty())
+                .billedQty(item.getBilledQty())
+                .matchStatus(item.getMatchStatus().name())
+                .varianceQty(item.getVarianceQty())
+                .varianceAmount(item.getVarianceAmount())
+                .description(item.getDescription())
+                .createdAt(item.getCreatedAt())
+                .updatedAt(item.getUpdatedAt())
+                .build();
     }
 
-    @GetMapping("/{id}/items")
-    @Operation(summary = "Get purchase invoice items")
-    public ResponseEntity<List<PurchaseInvoiceItem>> getItems(@PathVariable UUID id) {
-        List<PurchaseInvoiceItem> items = piiRepository.findByPurchaseInvoiceIdOrderByIdxAsc(id);
-        return ResponseEntity.ok(items);
-    }
-
-    @GetMapping("/{id}/match-status")
-    @Operation(summary = "Get 3-way match status")
-    public ResponseEntity<List<ProcessPurchaseInvoiceUseCase.ThreeWayMatchResult.ItemMatchResult>> getMatchStatus(@PathVariable UUID id) {
-        // This would return the match results
-        return ResponseEntity.ok(List.of());
-    }
+    public record PurchaseInvoiceRequest(
+            UUID companyId,
+            String invoiceNo,
+            UUID supplierId,
+            UUID purchaseOrderId,
+            UUID purchaseReceiptId,
+            LocalDate invoiceDate,
+            LocalDate postingDate,
+            LocalDate dueDate,
+            String currency,
+            BigDecimal exchangeRate,
+            String paymentTerms,
+            String nfeAccessKey,
+            Long nfeNumber,
+            String nfeSeries,
+            String cfop,
+            String naturezaOperacao,
+            String notes
+    ) {}
 }

@@ -16,11 +16,11 @@ import java.util.UUID;
     @Index(name = "idx_quotation_status", columnList = "status"),
     @Index(name = "idx_quotation_valid_till", columnList = "valid_till")
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class SupplierQuotation {
 
     @Id
@@ -78,6 +78,58 @@ public class SupplierQuotation {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public String getQuotationNo() { return quotationNo; }
+    public void setQuotationNo(String quotationNo) { this.quotationNo = quotationNo; }
+
+    public Supplier getSupplier() { return supplier; }
+    public void setSupplier(Supplier supplier) { this.supplier = supplier; }
+
+    public LocalDate getQuotationDate() { return quotationDate; }
+    public void setQuotationDate(LocalDate quotationDate) { this.quotationDate = quotationDate; }
+
+    public LocalDate getValidTill() { return validTill; }
+    public void setValidTill(LocalDate validTill) { this.validTill = validTill; }
+
+    public QuotationStatus getStatus() { return status; }
+    public void setStatus(QuotationStatus status) { this.status = status; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
+
+    public BigDecimal getExchangeRate() { return exchangeRate; }
+    public void setExchangeRate(BigDecimal exchangeRate) { this.exchangeRate = exchangeRate; }
+
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
+
+    public BigDecimal getGrandTotal() { return grandTotal; }
+    public void setGrandTotal(BigDecimal grandTotal) { this.grandTotal = grandTotal; }
+
+    public String getTermsAndConditions() { return termsAndConditions; }
+    public void setTermsAndConditions(String termsAndConditions) { this.termsAndConditions = termsAndConditions; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public enum QuotationStatus {
         DRAFT, SUBMITTED, ACCEPTED, REJECTED, EXPIRED, ORDERED

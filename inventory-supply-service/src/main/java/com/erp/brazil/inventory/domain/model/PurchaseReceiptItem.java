@@ -15,11 +15,11 @@ import java.util.UUID;
     @Index(name = "idx_pri_item", columnList = "item_id"),
     @Index(name = "idx_pri_po_item", columnList = "purchase_order_item_id")
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class PurchaseReceiptItem {
 
     @Id
@@ -101,4 +101,83 @@ public class PurchaseReceiptItem {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public PurchaseReceipt getPurchaseReceipt() { return purchaseReceipt; }
+    public void setPurchaseReceipt(PurchaseReceipt purchaseReceipt) { this.purchaseReceipt = purchaseReceipt; }
+
+    public Integer getIdx() { return idx; }
+    public void setIdx(Integer idx) { this.idx = idx; }
+
+    public PurchaseOrderItem getPurchaseOrderItem() { return purchaseOrderItem; }
+    public void setPurchaseOrderItem(PurchaseOrderItem purchaseOrderItem) { this.purchaseOrderItem = purchaseOrderItem; }
+
+    public UUID getPurchaseOrderItemId() { return purchaseOrderItemId; }
+    public void setPurchaseOrderItemId(UUID purchaseOrderItemId) { this.purchaseOrderItemId = purchaseOrderItemId; }
+
+    public Item getItem() { return item; }
+    public void setItem(Item item) { this.item = item; }
+
+    public ItemVariant getItemVariant() { return itemVariant; }
+    public void setItemVariant(ItemVariant itemVariant) { this.itemVariant = itemVariant; }
+
+    public UUID getItemVariantId() { return itemVariantId; }
+    public void setItemVariantId(UUID itemVariantId) { this.itemVariantId = itemVariantId; }
+
+    public BigDecimal getQty() { return qty; }
+    public void setQty(BigDecimal qty) { this.qty = qty; }
+
+    public BigDecimal getRejectedQty() { return rejectedQty; }
+    public void setRejectedQty(BigDecimal rejectedQty) { this.rejectedQty = rejectedQty; }
+
+    public String getUom() { return uom; }
+    public void setUom(String uom) { this.uom = uom; }
+
+    public BigDecimal getConversionFactor() { return conversionFactor; }
+    public void setConversionFactor(BigDecimal conversionFactor) { this.conversionFactor = conversionFactor; }
+
+    public BigDecimal getRate() { return rate; }
+    public void setRate(BigDecimal rate) { this.rate = rate; }
+
+    public BigDecimal getAmount() { return amount; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
+
+    public UUID getWarehouseId() { return warehouseId; }
+    public void setWarehouseId(UUID warehouseId) { this.warehouseId = warehouseId; }
+
+    public UUID getLocationId() { return locationId; }
+    public void setLocationId(UUID locationId) { this.locationId = locationId; }
+
+    public String getBatchNo() { return batchNo; }
+    public void setBatchNo(String batchNo) { this.batchNo = batchNo; }
+
+    public String getSerialNos() { return serialNos; }
+    public void setSerialNos(String serialNos) { this.serialNos = serialNos; }
+
+    public ItemBatch.QualityStatus getQualityStatus() { return qualityStatus; }
+    public void setQualityStatus(ItemBatch.QualityStatus qualityStatus) { this.qualityStatus = qualityStatus; }
+
+    public LocalDateTime getManufacturingDate() { return manufacturingDate; }
+    public void setManufacturingDate(LocalDateTime manufacturingDate) { this.manufacturingDate = manufacturingDate; }
+
+    public LocalDateTime getExpiryDate() { return expiryDate; }
+    public void setExpiryDate(LocalDateTime expiryDate) { this.expiryDate = expiryDate; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

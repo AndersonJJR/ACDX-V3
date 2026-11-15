@@ -16,11 +16,11 @@ import java.util.UUID;
     @Index(name = "idx_sle_batch", columnList = "batch_id"),
     @Index(name = "idx_sle_serial", columnList = "serial_number_id")
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class StockLedgerEntry {
 
     @Id
@@ -107,4 +107,86 @@ public class StockLedgerEntry {
     // Partition key for database partitioning (company_id + posting_date)
     @Column(name = "partition_key", nullable = false, insertable = false, updatable = false)
     private String partitionKey;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public UUID getItemId() { return itemId; }
+    public void setItemId(UUID itemId) { this.itemId = itemId; }
+
+    public UUID getItemVariantId() { return itemVariantId; }
+    public void setItemVariantId(UUID itemVariantId) { this.itemVariantId = itemVariantId; }
+
+    public UUID getWarehouseId() { return warehouseId; }
+    public void setWarehouseId(UUID warehouseId) { this.warehouseId = warehouseId; }
+
+    public UUID getLocationId() { return locationId; }
+    public void setLocationId(UUID locationId) { this.locationId = locationId; }
+
+    public UUID getBatchId() { return batchId; }
+    public void setBatchId(UUID batchId) { this.batchId = batchId; }
+
+    public UUID getSerialNumberId() { return serialNumberId; }
+    public void setSerialNumberId(UUID serialNumberId) { this.serialNumberId = serialNumberId; }
+
+    public BigDecimal getQtyChange() { return qtyChange; }
+    public void setQtyChange(BigDecimal qtyChange) { this.qtyChange = qtyChange; }
+
+    public BigDecimal getValuationRate() { return valuationRate; }
+    public void setValuationRate(BigDecimal valuationRate) { this.valuationRate = valuationRate; }
+
+    public BigDecimal getStockValue() { return stockValue; }
+    public void setStockValue(BigDecimal stockValue) { this.stockValue = stockValue; }
+
+    public BigDecimal getStockQtyAfter() { return stockQtyAfter; }
+    public void setStockQtyAfter(BigDecimal stockQtyAfter) { this.stockQtyAfter = stockQtyAfter; }
+
+    public BigDecimal getStockValueAfter() { return stockValueAfter; }
+    public void setStockValueAfter(BigDecimal stockValueAfter) { this.stockValueAfter = stockValueAfter; }
+
+    public String getVoucherType() { return voucherType; }
+    public void setVoucherType(String voucherType) { this.voucherType = voucherType; }
+
+    public String getVoucherNo() { return voucherNo; }
+    public void setVoucherNo(String voucherNo) { this.voucherNo = voucherNo; }
+
+    public String getVoucherDetailNo() { return voucherDetailNo; }
+    public void setVoucherDetailNo(String voucherDetailNo) { this.voucherDetailNo = voucherDetailNo; }
+
+    public LocalDateTime getPostingDate() { return postingDate; }
+    public void setPostingDate(LocalDateTime postingDate) { this.postingDate = postingDate; }
+
+    public LocalDateTime getPostingTime() { return postingTime; }
+    public void setPostingTime(LocalDateTime postingTime) { this.postingTime = postingTime; }
+
+    public BigDecimal getActualQty() { return actualQty; }
+    public void setActualQty(BigDecimal actualQty) { this.actualQty = actualQty; }
+
+    public BigDecimal getIncomingRate() { return incomingRate; }
+    public void setIncomingRate(BigDecimal incomingRate) { this.incomingRate = incomingRate; }
+
+    public BigDecimal getOutgoingRate() { return outgoingRate; }
+    public void setOutgoingRate(BigDecimal outgoingRate) { this.outgoingRate = outgoingRate; }
+
+    public Item.ValuationMethod getValuationMethod() { return valuationMethod; }
+    public void setValuationMethod(Item.ValuationMethod valuationMethod) { this.valuationMethod = valuationMethod; }
+
+    public Boolean getIsCancelled() { return isCancelled; }
+    public void setIsCancelled(Boolean isCancelled) { this.isCancelled = isCancelled; }
+
+    public Boolean getIsReposted() { return isReposted; }
+    public void setIsReposted(Boolean isReposted) { this.isReposted = isReposted; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
+
+    public String getPartitionKey() { return partitionKey; }
+    public void setPartitionKey(String partitionKey) { this.partitionKey = partitionKey; }
 }

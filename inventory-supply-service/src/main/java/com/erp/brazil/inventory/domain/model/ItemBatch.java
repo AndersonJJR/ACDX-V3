@@ -12,11 +12,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "item_batches", uniqueConstraints = @UniqueConstraint(columnNames = {"item_id", "batch_no"}))
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class ItemBatch {
 
     @Id
@@ -78,6 +78,61 @@ public class ItemBatch {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public Item getItem() { return item; }
+    public void setItem(Item item) { this.item = item; }
+
+    public ItemVariant getItemVariant() { return itemVariant; }
+    public void setItemVariant(ItemVariant itemVariant) { this.itemVariant = itemVariant; }
+
+    public String getBatchNo() { return batchNo; }
+    public void setBatchNo(String batchNo) { this.batchNo = batchNo; }
+
+    public LocalDate getManufacturingDate() { return manufacturingDate; }
+    public void setManufacturingDate(LocalDate manufacturingDate) { this.manufacturingDate = manufacturingDate; }
+
+    public LocalDate getExpiryDate() { return expiryDate; }
+    public void setExpiryDate(LocalDate expiryDate) { this.expiryDate = expiryDate; }
+
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
+
+    public BigDecimal getValuationRate() { return valuationRate; }
+    public void setValuationRate(BigDecimal valuationRate) { this.valuationRate = valuationRate; }
+
+    public String getReferenceDoctype() { return referenceDoctype; }
+    public void setReferenceDoctype(String referenceDoctype) { this.referenceDoctype = referenceDoctype; }
+
+    public String getReferenceName() { return referenceName; }
+    public void setReferenceName(String referenceName) { this.referenceName = referenceName; }
+
+    public UUID getSupplierId() { return supplierId; }
+    public void setSupplierId(UUID supplierId) { this.supplierId = supplierId; }
+
+    public String getSupplierBatchNo() { return supplierBatchNo; }
+    public void setSupplierBatchNo(String supplierBatchNo) { this.supplierBatchNo = supplierBatchNo; }
+
+    public QualityStatus getQualityStatus() { return qualityStatus; }
+    public void setQualityStatus(QualityStatus qualityStatus) { this.qualityStatus = qualityStatus; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public enum QualityStatus {
         PENDING, ACCEPTED, REJECTED, QUARANTINE

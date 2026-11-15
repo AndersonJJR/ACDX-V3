@@ -20,11 +20,11 @@ import java.util.UUID;
     @Index(name = "idx_pi_po", columnList = "purchase_order_id"),
     @Index(name = "idx_pi_nfe_key", columnList = "nfe_access_key", unique = true)
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class PurchaseInvoice {
 
     @Id
@@ -134,6 +134,106 @@ public class PurchaseInvoice {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public String getInvoiceNo() { return invoiceNo; }
+    public void setInvoiceNo(String invoiceNo) { this.invoiceNo = invoiceNo; }
+
+    public Supplier getSupplier() { return supplier; }
+    public void setSupplier(Supplier supplier) { this.supplier = supplier; }
+
+    public PurchaseOrder getPurchaseOrder() { return purchaseOrder; }
+    public void setPurchaseOrder(PurchaseOrder purchaseOrder) { this.purchaseOrder = purchaseOrder; }
+
+    public PurchaseReceipt getPurchaseReceipt() { return purchaseReceipt; }
+    public void setPurchaseReceipt(PurchaseReceipt purchaseReceipt) { this.purchaseReceipt = purchaseReceipt; }
+
+    public LocalDate getInvoiceDate() { return invoiceDate; }
+    public void setInvoiceDate(LocalDate invoiceDate) { this.invoiceDate = invoiceDate; }
+
+    public LocalDate getPostingDate() { return postingDate; }
+    public void setPostingDate(LocalDate postingDate) { this.postingDate = postingDate; }
+
+    public LocalDate getDueDate() { return dueDate; }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+
+    public PIStatus getStatus() { return status; }
+    public void setStatus(PIStatus status) { this.status = status; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
+
+    public BigDecimal getExchangeRate() { return exchangeRate; }
+    public void setExchangeRate(BigDecimal exchangeRate) { this.exchangeRate = exchangeRate; }
+
+    public BigDecimal getTotalQty() { return totalQty; }
+    public void setTotalQty(BigDecimal totalQty) { this.totalQty = totalQty; }
+
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
+
+    public BigDecimal getGrandTotal() { return grandTotal; }
+    public void setGrandTotal(BigDecimal grandTotal) { this.grandTotal = grandTotal; }
+
+    public BigDecimal getAdvanceAllocated() { return advanceAllocated; }
+    public void setAdvanceAllocated(BigDecimal advanceAllocated) { this.advanceAllocated = advanceAllocated; }
+
+    public BigDecimal getOutstandingAmount() { return outstandingAmount; }
+    public void setOutstandingAmount(BigDecimal outstandingAmount) { this.outstandingAmount = outstandingAmount; }
+
+    public String getPaymentTerms() { return paymentTerms; }
+    public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
+
+    public String getNfeAccessKey() { return nfeAccessKey; }
+    public void setNfeAccessKey(String nfeAccessKey) { this.nfeAccessKey = nfeAccessKey; }
+
+    public Long getNfeNumber() { return nfeNumber; }
+    public void setNfeNumber(Long nfeNumber) { this.nfeNumber = nfeNumber; }
+
+    public String getNfeSeries() { return nfeSeries; }
+    public void setNfeSeries(String nfeSeries) { this.nfeSeries = nfeSeries; }
+
+    public String getNfeProtocol() { return nfeProtocol; }
+    public void setNfeProtocol(String nfeProtocol) { this.nfeProtocol = nfeProtocol; }
+
+    public NFeStatus getNfeStatus() { return nfeStatus; }
+    public void setNfeStatus(NFeStatus nfeStatus) { this.nfeStatus = nfeStatus; }
+
+    public String getNfeXml() { return nfeXml; }
+    public void setNfeXml(String nfeXml) { this.nfeXml = nfeXml; }
+
+    public String getCfop() { return cfop; }
+    public void setCfop(String cfop) { this.cfop = cfop; }
+
+    public String getNaturezaOperacao() { return naturezaOperacao; }
+    public void setNaturezaOperacao(String naturezaOperacao) { this.naturezaOperacao = naturezaOperacao; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+
+    public Boolean getIsBlockedForPayment() { return isBlockedForPayment; }
+    public void setIsBlockedForPayment(Boolean isBlockedForPayment) { this.isBlockedForPayment = isBlockedForPayment; }
+
+    public String getBlockReason() { return blockReason; }
+    public void setBlockReason(String blockReason) { this.blockReason = blockReason; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public enum PIStatus {
         DRAFT, SUBMITTED, VALIDATED, APPROVED, BLOCKED, PAID, PARTIALLY_PAID, OVERDUE, CANCELLED, RETURNED

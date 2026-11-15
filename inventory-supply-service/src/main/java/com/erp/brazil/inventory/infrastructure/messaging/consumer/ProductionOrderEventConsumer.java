@@ -32,7 +32,7 @@ public class ProductionOrderEventConsumer {
     @Transactional
     public void handleProductionOrderCompleted(ProductionOrderCompletedEvent event) {
         log.info("Received production order completed event: productionOrderId={}, companyId={}, items={}",
-                event.productionOrderId(), event.companyId(), event.items().size());
+                event.getProductionOrderId(), event.getCompanyId(), event.getItems().size());
 
         try {
             // Create a PurchaseReceipt for finished goods receipt
@@ -42,16 +42,16 @@ public class ProductionOrderEventConsumer {
             // Convert items to receipt items and receive goods
             // This would typically be done via the ReceiveGoodsUseCase
             // For now, we'll log and the actual receipt creation would be handled by a separate process
-            log.info("Created receipt {} for production order {}", savedReceipt.getId(), event.productionOrderId());
+            log.info("Created receipt {} for production order {}", savedReceipt.getId(), event.getProductionOrderId());
 
             // Trigger receive goods
-            ReceiveGoodsUseCase.Input input = new ReceiveGoodsUseCase.Input(savedReceipt.getId(), event.items().get(0).itemId()); // userId placeholder
+            ReceiveGoodsUseCase.Input input = new ReceiveGoodsUseCase.Input(savedReceipt.getId(), event.getItems().get(0).getItemId()); // userId placeholder
             receiveGoodsUseCase.execute(input);
 
-            log.info("Finished goods received for production order: {}", event.productionOrderId());
+            log.info("Finished goods received for production order: {}", event.getProductionOrderId());
 
         } catch (Exception e) {
-            log.error("Error receiving finished goods for production order: {}", event.productionOrderId(), e);
+            log.error("Error receiving finished goods for production order: {}", event.getProductionOrderId(), e);
         }
     }
 
@@ -59,16 +59,16 @@ public class ProductionOrderEventConsumer {
         // This is a simplified version - in reality, you'd fetch the production order details
         // and create a proper receipt with all items
         PurchaseReceipt receipt = PurchaseReceipt.builder()
-                .companyId(event.companyId())
-                .supplierId(event.companyId()) // Internal production - company acts as supplier
+                .companyId(event.getCompanyId())
+                .supplierId(event.getCompanyId()) // Internal production - company acts as supplier
                 .purchaseOrderId(null) // No PO for production
-                .receiptNo("PR-PROD-" + event.productionOrderId().toString().substring(0, 8))
+                .receiptNo("PR-PROD-" + event.getProductionOrderId().toString().substring(0, 8))
                 .receiptDate(java.time.LocalDate.now())
                 .postingDate(java.time.LocalDate.now())
                 .status(PurchaseReceipt.PRStatus.SUBMITTED)
                 .currency("BRL")
                 .exchangeRate(java.math.BigDecimal.ONE)
-                .notes("Finished goods receipt from production order: " + event.productionOrderId())
+                .notes("Finished goods receipt from production order: " + event.getProductionOrderId())
                 .build();
 
         // Items would be added as PurchaseReceiptItem entities

@@ -10,11 +10,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "item_serial_numbers", uniqueConstraints = @UniqueConstraint(columnNames = {"item_id", "serial_no"}))
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class ItemSerialNumber {
 
     @Id
@@ -78,6 +78,61 @@ public class ItemSerialNumber {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public Item getItem() { return item; }
+    public void setItem(Item item) { this.item = item; }
+
+    public ItemVariant getItemVariant() { return itemVariant; }
+    public void setItemVariant(ItemVariant itemVariant) { this.itemVariant = itemVariant; }
+
+    public ItemBatch getBatch() { return batch; }
+    public void setBatch(ItemBatch batch) { this.batch = batch; }
+
+    public String getSerialNo() { return serialNo; }
+    public void setSerialNo(String serialNo) { this.serialNo = serialNo; }
+
+    public SerialStatus getStatus() { return status; }
+    public void setStatus(SerialStatus status) { this.status = status; }
+
+    public UUID getWarehouseId() { return warehouseId; }
+    public void setWarehouseId(UUID warehouseId) { this.warehouseId = warehouseId; }
+
+    public UUID getLocationId() { return locationId; }
+    public void setLocationId(UUID locationId) { this.locationId = locationId; }
+
+    public UUID getPurchaseReceiptId() { return purchaseReceiptId; }
+    public void setPurchaseReceiptId(UUID purchaseReceiptId) { this.purchaseReceiptId = purchaseReceiptId; }
+
+    public UUID getDeliveryNoteId() { return deliveryNoteId; }
+    public void setDeliveryNoteId(UUID deliveryNoteId) { this.deliveryNoteId = deliveryNoteId; }
+
+    public UUID getSalesInvoiceId() { return salesInvoiceId; }
+    public void setSalesInvoiceId(UUID salesInvoiceId) { this.salesInvoiceId = salesInvoiceId; }
+
+    public MaintenanceStatus getMaintenanceStatus() { return maintenanceStatus; }
+    public void setMaintenanceStatus(MaintenanceStatus maintenanceStatus) { this.maintenanceStatus = maintenanceStatus; }
+
+    public LocalDateTime getWarrantyExpiryDate() { return warrantyExpiryDate; }
+    public void setWarrantyExpiryDate(LocalDateTime warrantyExpiryDate) { this.warrantyExpiryDate = warrantyExpiryDate; }
+
+    public LocalDateTime getAmcExpiryDate() { return amcExpiryDate; }
+    public void setAmcExpiryDate(LocalDateTime amcExpiryDate) { this.amcExpiryDate = amcExpiryDate; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public enum SerialStatus {
         AVAILABLE, RESERVED, DELIVERED, INSTALLED, MAINTENANCE, RETURNED, SCRAPPED

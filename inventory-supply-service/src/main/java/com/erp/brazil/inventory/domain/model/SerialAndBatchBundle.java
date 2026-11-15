@@ -11,11 +11,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "serial_batch_bundles")
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class SerialAndBatchBundle {
 
     @Id
@@ -62,4 +62,44 @@ public class SerialAndBatchBundle {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public Item getItem() { return item; }
+    public void setItem(Item item) { this.item = item; }
+
+    public ItemBatch getBatch() { return batch; }
+    public void setBatch(ItemBatch batch) { this.batch = batch; }
+
+    public ItemSerialNumber getSerialNumber() { return serialNumber; }
+    public void setSerialNumber(ItemSerialNumber serialNumber) { this.serialNumber = serialNumber; }
+
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
+
+    public UUID getWarehouseId() { return warehouseId; }
+    public void setWarehouseId(UUID warehouseId) { this.warehouseId = warehouseId; }
+
+    public UUID getLocationId() { return locationId; }
+    public void setLocationId(UUID locationId) { this.locationId = locationId; }
+
+    public String getVoucherType() { return voucherType; }
+    public void setVoucherType(String voucherType) { this.voucherType = voucherType; }
+
+    public String getVoucherNo() { return voucherNo; }
+    public void setVoucherNo(String voucherNo) { this.voucherNo = voucherNo; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

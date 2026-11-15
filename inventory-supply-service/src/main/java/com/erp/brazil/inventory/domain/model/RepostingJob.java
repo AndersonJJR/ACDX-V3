@@ -14,11 +14,11 @@ import java.util.UUID;
     @Index(name = "idx_reposting_status", columnList = "status"),
     @Index(name = "idx_reposting_company_date", columnList = "company_id, posting_date_from, posting_date_to")
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class RepostingJob {
 
     @Id
@@ -90,6 +90,73 @@ public class RepostingJob {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public String getJobName() { return jobName; }
+    public void setJobName(String jobName) { this.jobName = jobName; }
+
+    public LocalDate getPostingDateFrom() { return postingDateFrom; }
+    public void setPostingDateFrom(LocalDate postingDateFrom) { this.postingDateFrom = postingDateFrom; }
+
+    public LocalDate getPostingDateTo() { return postingDateTo; }
+    public void setPostingDateTo(LocalDate postingDateTo) { this.postingDateTo = postingDateTo; }
+
+    public String getItemGroup() { return itemGroup; }
+    public void setItemGroup(String itemGroup) { this.itemGroup = itemGroup; }
+
+    public UUID getItemId() { return itemId; }
+    public void setItemId(UUID itemId) { this.itemId = itemId; }
+
+    public UUID getWarehouseId() { return warehouseId; }
+    public void setWarehouseId(UUID warehouseId) { this.warehouseId = warehouseId; }
+
+    public RepostingStatus getStatus() { return status; }
+    public void setStatus(RepostingStatus status) { this.status = status; }
+
+    public Integer getPriority() { return priority; }
+    public void setPriority(Integer priority) { this.priority = priority; }
+
+    public Integer getChunkSize() { return chunkSize; }
+    public void setChunkSize(Integer chunkSize) { this.chunkSize = chunkSize; }
+
+    public Long getTotalRecords() { return totalRecords; }
+    public void setTotalRecords(Long totalRecords) { this.totalRecords = totalRecords; }
+
+    public Long getProcessedRecords() { return processedRecords; }
+    public void setProcessedRecords(Long processedRecords) { this.processedRecords = processedRecords; }
+
+    public Long getFailedRecords() { return failedRecords; }
+    public void setFailedRecords(Long failedRecords) { this.failedRecords = failedRecords; }
+
+    public LocalDateTime getStartedAt() { return startedAt; }
+    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
+
+    public LocalDateTime getCompletedAt() { return completedAt; }
+    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+
+    public Boolean getIsDryRun() { return isDryRun; }
+    public void setIsDryRun(Boolean isDryRun) { this.isDryRun = isDryRun; }
+
+    public UUID getTriggeredBy() { return triggeredBy; }
+    public void setTriggeredBy(UUID triggeredBy) { this.triggeredBy = triggeredBy; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public enum RepostingStatus {
         PENDING, QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED, PARTIALLY_COMPLETED

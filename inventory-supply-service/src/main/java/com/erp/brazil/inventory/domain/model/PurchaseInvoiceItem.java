@@ -16,11 +16,11 @@ import java.util.UUID;
     @Index(name = "idx_pii_pr_item", columnList = "purchase_receipt_item_id"),
     @Index(name = "idx_pii_po_item", columnList = "purchase_order_item_id")
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class PurchaseInvoiceItem {
 
     @Id
@@ -113,6 +113,88 @@ public class PurchaseInvoiceItem {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public PurchaseInvoice getPurchaseInvoice() { return purchaseInvoice; }
+    public void setPurchaseInvoice(PurchaseInvoice purchaseInvoice) { this.purchaseInvoice = purchaseInvoice; }
+
+    public Integer getIdx() { return idx; }
+    public void setIdx(Integer idx) { this.idx = idx; }
+
+    public PurchaseOrderItem getPurchaseOrderItem() { return purchaseOrderItem; }
+    public void setPurchaseOrderItem(PurchaseOrderItem purchaseOrderItem) { this.purchaseOrderItem = purchaseOrderItem; }
+
+    public PurchaseReceiptItem getPurchaseReceiptItem() { return purchaseReceiptItem; }
+    public void setPurchaseReceiptItem(PurchaseReceiptItem purchaseReceiptItem) { this.purchaseReceiptItem = purchaseReceiptItem; }
+
+    public Item getItem() { return item; }
+    public void setItem(Item item) { this.item = item; }
+
+    public ItemVariant getItemVariant() { return itemVariant; }
+    public void setItemVariant(ItemVariant itemVariant) { this.itemVariant = itemVariant; }
+
+    public BigDecimal getQty() { return qty; }
+    public void setQty(BigDecimal qty) { this.qty = qty; }
+
+    public String getUom() { return uom; }
+    public void setUom(String uom) { this.uom = uom; }
+
+    public BigDecimal getConversionFactor() { return conversionFactor; }
+    public void setConversionFactor(BigDecimal conversionFactor) { this.conversionFactor = conversionFactor; }
+
+    public BigDecimal getRate() { return rate; }
+    public void setRate(BigDecimal rate) { this.rate = rate; }
+
+    public BigDecimal getAmount() { return amount; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
+
+    public BigDecimal getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(BigDecimal discountPercent) { this.discountPercent = discountPercent; }
+
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
+
+    public String getTaxTemplate() { return taxTemplate; }
+    public void setTaxTemplate(String taxTemplate) { this.taxTemplate = taxTemplate; }
+
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
+
+    public BigDecimal getPoQty() { return poQty; }
+    public void setPoQty(BigDecimal poQty) { this.poQty = poQty; }
+
+    public BigDecimal getReceivedQty() { return receivedQty; }
+    public void setReceivedQty(BigDecimal receivedQty) { this.receivedQty = receivedQty; }
+
+    public BigDecimal getBilledQty() { return billedQty; }
+    public void setBilledQty(BigDecimal billedQty) { this.billedQty = billedQty; }
+
+    public MatchStatus getMatchStatus() { return matchStatus; }
+    public void setMatchStatus(MatchStatus matchStatus) { this.matchStatus = matchStatus; }
+
+    public BigDecimal getVarianceQty() { return varianceQty; }
+    public void setVarianceQty(BigDecimal varianceQty) { this.varianceQty = varianceQty; }
+
+    public BigDecimal getVarianceAmount() { return varianceAmount; }
+    public void setVarianceAmount(BigDecimal varianceAmount) { this.varianceAmount = varianceAmount; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public enum MatchStatus {
         PENDING, MATCHED, QUANTITY_MISMATCH, RATE_MISMATCH, BOTH_MISMATCH, OVER_BILLED

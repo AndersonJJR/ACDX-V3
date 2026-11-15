@@ -14,11 +14,11 @@ import java.util.UUID;
     @Index(name = "idx_po_item_po", columnList = "purchase_order_id"),
     @Index(name = "idx_po_item_item", columnList = "item_id")
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class PurchaseOrderItem {
 
     @Id
@@ -98,4 +98,80 @@ public class PurchaseOrderItem {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public PurchaseOrder getPurchaseOrder() { return purchaseOrder; }
+    public void setPurchaseOrder(PurchaseOrder purchaseOrder) { this.purchaseOrder = purchaseOrder; }
+
+    public Integer getIdx() { return idx; }
+    public void setIdx(Integer idx) { this.idx = idx; }
+
+    public Item getItem() { return item; }
+    public void setItem(Item item) { this.item = item; }
+
+    public ItemVariant getItemVariant() { return itemVariant; }
+    public void setItemVariant(ItemVariant itemVariant) { this.itemVariant = itemVariant; }
+
+    public UUID getItemVariantId() { return itemVariantId; }
+    public void setItemVariantId(UUID itemVariantId) { this.itemVariantId = itemVariantId; }
+
+    public BigDecimal getQty() { return qty; }
+    public void setQty(BigDecimal qty) { this.qty = qty; }
+
+    public BigDecimal getReceivedQty() { return receivedQty; }
+    public void setReceivedQty(BigDecimal receivedQty) { this.receivedQty = receivedQty; }
+
+    public BigDecimal getBilledQty() { return billedQty; }
+    public void setBilledQty(BigDecimal billedQty) { this.billedQty = billedQty; }
+
+    public String getUom() { return uom; }
+    public void setUom(String uom) { this.uom = uom; }
+
+    public BigDecimal getConversionFactor() { return conversionFactor; }
+    public void setConversionFactor(BigDecimal conversionFactor) { this.conversionFactor = conversionFactor; }
+
+    public BigDecimal getRate() { return rate; }
+    public void setRate(BigDecimal rate) { this.rate = rate; }
+
+    public BigDecimal getAmount() { return amount; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
+
+    public BigDecimal getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(BigDecimal discountPercent) { this.discountPercent = discountPercent; }
+
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
+
+    public String getTaxTemplate() { return taxTemplate; }
+    public void setTaxTemplate(String taxTemplate) { this.taxTemplate = taxTemplate; }
+
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
+
+    public UUID getWarehouseId() { return warehouseId; }
+    public void setWarehouseId(UUID warehouseId) { this.warehouseId = warehouseId; }
+
+    public LocalDateTime getRequiredDate() { return requiredDate; }
+    public void setRequiredDate(LocalDateTime requiredDate) { this.requiredDate = requiredDate; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public Boolean getIsSubcontracted() { return isSubcontracted; }
+    public void setIsSubcontracted(Boolean isSubcontracted) { this.isSubcontracted = isSubcontracted; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

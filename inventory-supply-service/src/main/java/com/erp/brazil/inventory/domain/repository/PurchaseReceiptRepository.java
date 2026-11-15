@@ -24,6 +24,8 @@ public interface PurchaseReceiptRepository extends JpaRepository<PurchaseReceipt
 
     List<PurchaseReceipt> findByCompanyIdAndStatus(UUID companyId, PurchaseReceipt.PRStatus status);
 
+    Page<PurchaseReceipt> findByCompanyIdAndStatus(UUID companyId, PurchaseReceipt.PRStatus status, Pageable pageable);
+
     List<PurchaseReceipt> findByPurchaseOrderId(UUID purchaseOrderId);
 
     List<PurchaseReceipt> findByCompanyIdAndReceiptDateBetween(UUID companyId, LocalDate startDate, LocalDate endDate);

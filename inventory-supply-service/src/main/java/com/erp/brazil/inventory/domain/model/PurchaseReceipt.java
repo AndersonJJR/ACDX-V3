@@ -18,11 +18,11 @@ import java.util.UUID;
     @Index(name = "idx_pr_date", columnList = "receipt_date"),
     @Index(name = "idx_pr_po", columnList = "purchase_order_id")
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class PurchaseReceipt {
 
     @Id
@@ -112,7 +112,115 @@ public class PurchaseReceipt {
     @Version
     private Long version;
 
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public String getReceiptNo() { return receiptNo; }
+    public void setReceiptNo(String receiptNo) { this.receiptNo = receiptNo; }
+
+    public Supplier getSupplier() { return supplier; }
+    public void setSupplier(Supplier supplier) { this.supplier = supplier; }
+
+    public PurchaseOrder getPurchaseOrder() { return purchaseOrder; }
+    public void setPurchaseOrder(PurchaseOrder purchaseOrder) { this.purchaseOrder = purchaseOrder; }
+
+    public LocalDate getReceiptDate() { return receiptDate; }
+    public void setReceiptDate(LocalDate receiptDate) { this.receiptDate = receiptDate; }
+
+    public LocalDate getPostingDate() { return postingDate; }
+    public void setPostingDate(LocalDate postingDate) { this.postingDate = postingDate; }
+
+    public PRStatus getStatus() { return status; }
+    public void setStatus(PRStatus status) { this.status = status; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
+
+    public BigDecimal getExchangeRate() { return exchangeRate; }
+    public void setExchangeRate(BigDecimal exchangeRate) { this.exchangeRate = exchangeRate; }
+
+    public BigDecimal getTotalQty() { return totalQty; }
+    public void setTotalQty(BigDecimal totalQty) { this.totalQty = totalQty; }
+
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
+
+    public BigDecimal getGrandTotal() { return grandTotal; }
+    public void setGrandTotal(BigDecimal grandTotal) { this.grandTotal = grandTotal; }
+
+    public Boolean getInspectionRequired() { return inspectionRequired; }
+    public void setInspectionRequired(Boolean inspectionRequired) { this.inspectionRequired = inspectionRequired; }
+
+    public UUID getInspectionBy() { return inspectionBy; }
+    public void setInspectionBy(UUID inspectionBy) { this.inspectionBy = inspectionBy; }
+
+    public LocalDateTime getInspectionDate() { return inspectionDate; }
+    public void setInspectionDate(LocalDateTime inspectionDate) { this.inspectionDate = inspectionDate; }
+
+    public String getTransporterName() { return transporterName; }
+    public void setTransporterName(String transporterName) { this.transporterName = transporterName; }
+
+    public String getLrNo() { return lrNo; }
+    public void setLrNo(String lrNo) { this.lrNo = lrNo; }
+
+    public LocalDate getLrDate() { return lrDate; }
+    public void setLrDate(LocalDate lrDate) { this.lrDate = lrDate; }
+
+    public String getVehicleNo() { return vehicleNo; }
+    public void setVehicleNo(String vehicleNo) { this.vehicleNo = vehicleNo; }
+
+    public String getShippingAddress() { return shippingAddress; }
+    public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+
+    public BigDecimal getPerBilled() { return perBilled; }
+    public void setPerBilled(BigDecimal perBilled) { this.perBilled = perBilled; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
+
     public enum PRStatus {
         DRAFT, SUBMITTED, QUALITY_INSPECTION, ACCEPTED, REJECTED, PARTIALLY_RECEIVED, COMPLETED, RETURNED, CANCELLED
+    }
+
+    // Static factory method for creating new instances
+    public static PurchaseReceipt create(UUID companyId, String receiptNo, Supplier supplier,
+            PurchaseOrder purchaseOrder, LocalDate receiptDate, LocalDate postingDate,
+            String currency, BigDecimal exchangeRate, Boolean inspectionRequired,
+            String transporterName, String lrNo, LocalDate lrDate, String vehicleNo,
+            String shippingAddress, String notes) {
+        PurchaseReceipt receipt = new PurchaseReceipt();
+        receipt.setCompanyId(companyId);
+        receipt.setReceiptNo(receiptNo);
+        receipt.setSupplier(supplier);
+        receipt.setPurchaseOrder(purchaseOrder);
+        receipt.setReceiptDate(receiptDate);
+        receipt.setPostingDate(postingDate);
+        receipt.setStatus(PRStatus.DRAFT);
+        receipt.setCurrency(currency);
+        receipt.setExchangeRate(exchangeRate);
+        receipt.setInspectionRequired(inspectionRequired);
+        receipt.setTransporterName(transporterName);
+        receipt.setLrNo(lrNo);
+        receipt.setLrDate(lrDate);
+        receipt.setVehicleNo(vehicleNo);
+        receipt.setShippingAddress(shippingAddress);
+        receipt.setNotes(notes);
+        return receipt;
     }
 }

@@ -1,5 +1,26 @@
 -- V1__init_inventory.sql
--- Initial inventory schema for ERP Brazil
+-- Initial inventory schema for MySQL
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Companies table (reference)
+CREATE TABLE IF NOT EXISTS companies (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    cnpj VARCHAR(18),
+    address TEXT,
+    city VARCHAR(100),
+    state VARCHAR(2),
+    country VARCHAR(2) DEFAULT 'BR',
+    postal_code VARCHAR(20),
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Warehouses
 CREATE TABLE warehouses (
@@ -12,14 +33,15 @@ CREATE TABLE warehouses (
     state VARCHAR(2),
     country VARCHAR(2) DEFAULT 'BR',
     postal_code VARCHAR(20),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    is_default BOOLEAN NOT NULL DEFAULT FALSE,
-    allow_negative_stock BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_default BOOLEAN DEFAULT FALSE,
+    allow_negative_stock BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_warehouse_company_code (company_id, code),
-    INDEX idx_warehouse_company_active (company_id, is_active)
+    INDEX idx_warehouse_company (company_id),
+    INDEX idx_warehouse_default (company_id, is_default)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Locations
@@ -34,15 +56,16 @@ CREATE TABLE locations (
     rack VARCHAR(20),
     shelf VARCHAR(20),
     bin VARCHAR(20),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    is_pickable BOOLEAN NOT NULL DEFAULT TRUE,
-    is_receivable BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_pickable BOOLEAN DEFAULT TRUE,
+    is_receivable BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_location_warehouse_code (warehouse_id, code),
-    INDEX idx_location_company_warehouse (company_id, warehouse_id),
-    INDEX idx_location_active (is_active),
+    INDEX idx_location_warehouse (warehouse_id),
+    INDEX idx_location_company (company_id),
+    INDEX idx_location_type (location_type),
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -59,13 +82,13 @@ CREATE TABLE items (
     unit_of_measure VARCHAR(20) NOT NULL,
     valuation_method VARCHAR(20) NOT NULL DEFAULT 'MOVING_AVERAGE',
     standard_rate DECIMAL(20,6),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    is_stock_item BOOLEAN NOT NULL DEFAULT TRUE,
-    is_purchasable BOOLEAN NOT NULL DEFAULT TRUE,
-    is_sellable BOOLEAN NOT NULL DEFAULT TRUE,
-    is_manufactured BOOLEAN NOT NULL DEFAULT FALSE,
-    has_batch BOOLEAN NOT NULL DEFAULT FALSE,
-    has_serial_no BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_stock_item BOOLEAN DEFAULT TRUE,
+    is_purchasable BOOLEAN DEFAULT TRUE,
+    is_sellable BOOLEAN DEFAULT TRUE,
+    is_manufactured BOOLEAN DEFAULT FALSE,
+    has_batch BOOLEAN DEFAULT FALSE,
+    has_serial_no BOOLEAN DEFAULT FALSE,
     batch_number_series VARCHAR(50),
     serial_number_series VARCHAR(50),
     default_warehouse_id CHAR(36),
@@ -79,13 +102,16 @@ CREATE TABLE items (
     ncm_code VARCHAR(20),
     cest_code VARCHAR(10),
     origem_mercadoria VARCHAR(1),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_item_company_code (company_id, code),
-    INDEX idx_item_company_active (company_id, is_active),
-    INDEX idx_item_company_type (company_id, item_type),
-    INDEX idx_item_stock (company_id, is_stock_item)
+    INDEX idx_item_company (company_id),
+    INDEX idx_item_company_name (company_id, name),
+    INDEX idx_item_type (item_type),
+    INDEX idx_item_group (item_group),
+    INDEX idx_item_stock (is_stock_item),
+    INDEX idx_item_reorder (reorder_level)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Item Variants
@@ -106,13 +132,14 @@ CREATE TABLE item_variants (
     height DECIMAL(20,6),
     dimension_uom VARCHAR(10),
     standard_rate DECIMAL(20,6),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_variant_item_code (item_id, variant_code),
     INDEX idx_variant_company (company_id),
     INDEX idx_variant_item (item_id),
+    INDEX idx_variant_barcode (barcode),
     FOREIGN KEY (item_id) REFERENCES items(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -131,16 +158,18 @@ CREATE TABLE item_batches (
     reference_name VARCHAR(100),
     supplier_id CHAR(36),
     supplier_batch_no VARCHAR(50),
-    quality_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    quality_status VARCHAR(20) DEFAULT 'PENDING',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_batch_item_no (item_id, batch_no),
     INDEX idx_batch_company (company_id),
     INDEX idx_batch_item (item_id),
+    INDEX idx_batch_variant (item_variant_id),
     INDEX idx_batch_expiry (expiry_date),
-    INDEX idx_batch_active (is_active),
+    INDEX idx_batch_quality (quality_status),
+    INDEX idx_batch_supplier (supplier_id),
     FOREIGN KEY (item_id) REFERENCES items(id),
     FOREIGN KEY (item_variant_id) REFERENCES item_variants(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -162,15 +191,18 @@ CREATE TABLE item_serial_numbers (
     maintenance_status VARCHAR(20),
     warranty_expiry_date TIMESTAMP,
     amc_expiry_date TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_serial_item_no (item_id, serial_no),
     INDEX idx_serial_company (company_id),
     INDEX idx_serial_item (item_id),
+    INDEX idx_serial_variant (item_variant_id),
     INDEX idx_serial_batch (batch_id),
-    INDEX idx_serial_warehouse (warehouse_id),
     INDEX idx_serial_status (status),
+    INDEX idx_serial_warehouse (warehouse_id),
+    INDEX idx_serial_purchase_receipt (purchase_receipt_id),
+    INDEX idx_serial_sales_invoice (sales_invoice_id),
     FOREIGN KEY (item_id) REFERENCES items(id),
     FOREIGN KEY (item_variant_id) REFERENCES item_variants(id),
     FOREIGN KEY (batch_id) REFERENCES item_batches(id)
@@ -188,20 +220,21 @@ CREATE TABLE serial_batch_bundles (
     location_id CHAR(36),
     voucher_type VARCHAR(50),
     voucher_no VARCHAR(100),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     INDEX idx_bundle_company (company_id),
-    INDEX idx_bundle_item_warehouse (item_id, warehouse_id),
+    INDEX idx_bundle_item (item_id),
     INDEX idx_bundle_batch (batch_id),
     INDEX idx_bundle_serial (serial_number_id),
+    INDEX idx_bundle_warehouse (warehouse_id),
     INDEX idx_bundle_voucher (voucher_type, voucher_no),
     FOREIGN KEY (item_id) REFERENCES items(id),
     FOREIGN KEY (batch_id) REFERENCES item_batches(id),
     FOREIGN KEY (serial_number_id) REFERENCES item_serial_numbers(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Stock Ledger Entries (Partitioned by company_id + posting_date)
+-- Stock Ledger Entries (will be partitioned in V3)
 CREATE TABLE stock_ledger_entries (
     id CHAR(36) NOT NULL PRIMARY KEY,
     company_id CHAR(36) NOT NULL,
@@ -225,33 +258,25 @@ CREATE TABLE stock_ledger_entries (
     incoming_rate DECIMAL(20,6),
     outgoing_rate DECIMAL(20,6),
     valuation_method VARCHAR(20),
-    is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
-    is_reposted BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    is_cancelled BOOLEAN DEFAULT FALSE,
+    is_reposted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT DEFAULT 0,
+    partition_key VARCHAR(50) GENERATED ALWAYS AS (CONCAT(company_id, '_', DATE_FORMAT(posting_date, '%Y%m'))) STORED,
     INDEX idx_sle_item_warehouse_date (item_id, warehouse_id, posting_date),
     INDEX idx_sle_voucher (voucher_type, voucher_no),
     INDEX idx_sle_company_date (company_id, posting_date),
     INDEX idx_sle_batch (batch_id),
     INDEX idx_sle_serial (serial_number_id),
+    INDEX idx_sle_partition (partition_key),
     INDEX idx_sle_cancelled (is_cancelled),
-    INDEX idx_sle_reposted (is_reposted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-PARTITION BY RANGE COLUMNS(company_id, posting_date) (
-    PARTITION p202401 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-02-01'),
-    PARTITION p202402 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-03-01'),
-    PARTITION p202403 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-04-01'),
-    PARTITION p202404 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-05-01'),
-    PARTITION p202405 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-06-01'),
-    PARTITION p202406 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-07-01'),
-    PARTITION p202407 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-08-01'),
-    PARTITION p202408 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-09-01'),
-    PARTITION p202409 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-10-01'),
-    PARTITION p202410 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-11-01'),
-    PARTITION p202411 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2024-12-01'),
-    PARTITION p202412 VALUES LESS THAN ('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', '2025-01-01'),
-    PARTITION pmax VALUES LESS THAN MAXVALUE
-);
+    INDEX idx_sle_reposted (is_reposted),
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    FOREIGN KEY (item_variant_id) REFERENCES item_variants(id),
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
+    FOREIGN KEY (batch_id) REFERENCES item_batches(id),
+    FOREIGN KEY (serial_number_id) REFERENCES item_serial_numbers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Stock Reservations
 CREATE TABLE stock_reservations (
@@ -264,7 +289,7 @@ CREATE TABLE stock_reservations (
     batch_id CHAR(36),
     serial_number_id CHAR(36),
     qty_reserved DECIMAL(20,6) NOT NULL,
-    qty_delivered DECIMAL(20,6) NOT NULL DEFAULT 0,
+    qty_delivered DECIMAL(20,6) DEFAULT 0,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     voucher_type VARCHAR(50) NOT NULL,
     voucher_no VARCHAR(100) NOT NULL,
@@ -272,14 +297,19 @@ CREATE TABLE stock_reservations (
     expiry_date TIMESTAMP,
     reference_doctype VARCHAR(50),
     reference_name VARCHAR(100),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     INDEX idx_reservation_item_warehouse (item_id, warehouse_id),
     INDEX idx_reservation_voucher (voucher_type, voucher_no),
     INDEX idx_reservation_status (status),
     INDEX idx_reservation_expiry (expiry_date),
-    INDEX idx_reservation_company (company_id)
+    INDEX idx_reservation_company (company_id),
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    FOREIGN KEY (item_variant_id) REFERENCES item_variants(id),
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
+    FOREIGN KEY (batch_id) REFERENCES item_batches(id),
+    FOREIGN KEY (serial_number_id) REFERENCES item_serial_numbers(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Suppliers
@@ -288,7 +318,7 @@ CREATE TABLE suppliers (
     company_id CHAR(36) NOT NULL,
     supplier_code VARCHAR(50) NOT NULL,
     supplier_name VARCHAR(200) NOT NULL,
-    supplier_type VARCHAR(20) NOT NULL DEFAULT 'REGULAR',
+    supplier_type VARCHAR(20) DEFAULT 'REGULAR',
     cnpj VARCHAR(18),
     cpf VARCHAR(14),
     ie VARCHAR(20),
@@ -305,17 +335,19 @@ CREATE TABLE suppliers (
     currency VARCHAR(3) DEFAULT 'BRL',
     credit_limit DECIMAL(20,6),
     lead_time_days INT,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    is_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_approved BOOLEAN DEFAULT FALSE,
     tax_regime VARCHAR(20),
     crt VARCHAR(1),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_supplier_company_code (company_id, supplier_code),
     UNIQUE KEY uk_supplier_cnpj (cnpj),
-    INDEX idx_supplier_company_active (company_id, is_active),
-    INDEX idx_supplier_type (supplier_type)
+    INDEX idx_supplier_company (company_id),
+    INDEX idx_supplier_type (supplier_type),
+    INDEX idx_supplier_active (is_active),
+    INDEX idx_supplier_approved (is_approved)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Supplier Quotations
@@ -334,12 +366,14 @@ CREATE TABLE supplier_quotations (
     grand_total DECIMAL(20,6),
     terms_and_conditions TEXT,
     notes TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
+    UNIQUE KEY uk_quotation_company_no (company_id, quotation_no),
     INDEX idx_quotation_supplier (supplier_id),
     INDEX idx_quotation_status (status),
-    INDEX idx_quotation_valid_till (valid_till),
+    INDEX idx_quotation_valid (valid_till),
+    INDEX idx_quotation_company (company_id),
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -367,13 +401,15 @@ CREATE TABLE purchase_orders (
     notes TEXT,
     approved_by CHAR(36),
     approved_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_po_company_no (company_id, po_no),
     INDEX idx_po_supplier (supplier_id),
     INDEX idx_po_status (status),
     INDEX idx_po_date (po_date),
+    INDEX idx_po_company (company_id),
+    INDEX idx_po_expected (expected_delivery_date),
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -386,8 +422,8 @@ CREATE TABLE purchase_order_items (
     item_id CHAR(36) NOT NULL,
     item_variant_id CHAR(36),
     qty DECIMAL(20,6) NOT NULL,
-    received_qty DECIMAL(20,6) NOT NULL DEFAULT 0,
-    billed_qty DECIMAL(20,6) NOT NULL DEFAULT 0,
+    received_qty DECIMAL(20,6) DEFAULT 0,
+    billed_qty DECIMAL(20,6) DEFAULT 0,
     uom VARCHAR(20) NOT NULL,
     conversion_factor DECIMAL(20,6) DEFAULT 1,
     rate DECIMAL(20,6) NOT NULL,
@@ -399,14 +435,17 @@ CREATE TABLE purchase_order_items (
     warehouse_id CHAR(36),
     required_date TIMESTAMP,
     description TEXT,
-    is_subcontracted BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_subcontracted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     INDEX idx_po_item_po (purchase_order_id),
     INDEX idx_po_item_item (item_id),
+    INDEX idx_po_item_company (company_id),
+    INDEX idx_po_item_pending (received_qty, qty),
     FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id),
-    FOREIGN KEY (item_id) REFERENCES items(id)
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    FOREIGN KEY (item_variant_id) REFERENCES item_variants(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Purchase Receipts
@@ -425,7 +464,7 @@ CREATE TABLE purchase_receipts (
     total_amount DECIMAL(20,6),
     tax_amount DECIMAL(20,6),
     grand_total DECIMAL(20,6),
-    inspection_required BOOLEAN NOT NULL DEFAULT FALSE,
+    inspection_required BOOLEAN DEFAULT FALSE,
     inspection_by CHAR(36),
     inspection_date TIMESTAMP,
     transporter_name VARCHAR(100),
@@ -435,14 +474,15 @@ CREATE TABLE purchase_receipts (
     shipping_address TEXT,
     notes TEXT,
     per_billed DECIMAL(10,2) DEFAULT 0,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_pr_company_no (company_id, receipt_no),
     INDEX idx_pr_supplier (supplier_id),
     INDEX idx_pr_status (status),
     INDEX idx_pr_date (receipt_date),
     INDEX idx_pr_po (purchase_order_id),
+    INDEX idx_pr_company (company_id),
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
     FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -470,14 +510,18 @@ CREATE TABLE purchase_receipt_items (
     manufacturing_date TIMESTAMP,
     expiry_date TIMESTAMP,
     description TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     INDEX idx_pri_receipt (purchase_receipt_id),
     INDEX idx_pri_item (item_id),
     INDEX idx_pri_po_item (purchase_order_item_id),
+    INDEX idx_pri_company (company_id),
+    INDEX idx_pri_batch (batch_no),
     FOREIGN KEY (purchase_receipt_id) REFERENCES purchase_receipts(id),
-    FOREIGN KEY (item_id) REFERENCES items(id)
+    FOREIGN KEY (purchase_order_item_id) REFERENCES purchase_order_items(id),
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    FOREIGN KEY (item_variant_id) REFERENCES item_variants(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Purchase Invoices
@@ -510,11 +554,11 @@ CREATE TABLE purchase_invoices (
     cfop VARCHAR(4),
     natureza_operacao VARCHAR(60),
     notes TEXT,
-    is_blocked_for_payment BOOLEAN NOT NULL DEFAULT FALSE,
+    is_blocked_for_payment BOOLEAN DEFAULT FALSE,
     block_reason TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_pi_company_no (company_id, invoice_no),
     UNIQUE KEY uk_pi_nfe_key (nfe_access_key),
     INDEX idx_pi_supplier (supplier_id),
@@ -522,6 +566,9 @@ CREATE TABLE purchase_invoices (
     INDEX idx_pi_date (invoice_date),
     INDEX idx_pi_pr (purchase_receipt_id),
     INDEX idx_pi_po (purchase_order_id),
+    INDEX idx_pi_company (company_id),
+    INDEX idx_pi_due (due_date),
+    INDEX idx_pi_blocked (is_blocked_for_payment),
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
     FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id),
     FOREIGN KEY (purchase_receipt_id) REFERENCES purchase_receipts(id)
@@ -553,16 +600,20 @@ CREATE TABLE purchase_invoice_items (
     variance_qty DECIMAL(20,6),
     variance_amount DECIMAL(20,6),
     description TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     INDEX idx_pii_invoice (purchase_invoice_id),
     INDEX idx_pii_item (item_id),
     INDEX idx_pii_pr_item (purchase_receipt_item_id),
     INDEX idx_pii_po_item (purchase_order_item_id),
-    INDEX idx_pii_match_status (match_status),
+    INDEX idx_pii_company (company_id),
+    INDEX idx_pii_match (match_status),
     FOREIGN KEY (purchase_invoice_id) REFERENCES purchase_invoices(id),
-    FOREIGN KEY (item_id) REFERENCES items(id)
+    FOREIGN KEY (purchase_order_item_id) REFERENCES purchase_order_items(id),
+    FOREIGN KEY (purchase_receipt_item_id) REFERENCES purchase_receipt_items(id),
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    FOREIGN KEY (item_variant_id) REFERENCES item_variants(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Material Requests
@@ -582,14 +633,17 @@ CREATE TABLE material_requests (
     notes TEXT,
     approved_by CHAR(36),
     approved_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     UNIQUE KEY uk_mr_company_no (company_id, mr_no),
     INDEX idx_mr_status (status),
     INDEX idx_mr_date (request_date),
     INDEX idx_mr_warehouse (warehouse_id),
-    INDEX idx_mr_production_order (production_order_id)
+    INDEX idx_mr_production (production_order_id),
+    INDEX idx_mr_sales (sales_order_id),
+    INDEX idx_mr_company (company_id),
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Material Request Items
@@ -601,8 +655,8 @@ CREATE TABLE material_request_items (
     item_id CHAR(36) NOT NULL,
     item_variant_id CHAR(36),
     qty DECIMAL(20,6) NOT NULL,
-    issued_qty DECIMAL(20,6) NOT NULL DEFAULT 0,
-    transferred_qty DECIMAL(20,6) NOT NULL DEFAULT 0,
+    issued_qty DECIMAL(20,6) DEFAULT 0,
+    transferred_qty DECIMAL(20,6) DEFAULT 0,
     uom VARCHAR(20) NOT NULL,
     conversion_factor DECIMAL(20,6) DEFAULT 1,
     rate DECIMAL(20,6),
@@ -610,13 +664,15 @@ CREATE TABLE material_request_items (
     warehouse_id CHAR(36),
     from_warehouse_id CHAR(36),
     description TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     INDEX idx_mri_mr (material_request_id),
     INDEX idx_mri_item (item_id),
+    INDEX idx_mri_company (company_id),
     FOREIGN KEY (material_request_id) REFERENCES material_requests(id),
-    FOREIGN KEY (item_id) REFERENCES items(id)
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    FOREIGN KEY (item_variant_id) REFERENCES item_variants(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Reposting Jobs
@@ -630,21 +686,24 @@ CREATE TABLE reposting_jobs (
     item_id CHAR(36),
     warehouse_id CHAR(36),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    priority INT NOT NULL DEFAULT 5,
-    chunk_size INT NOT NULL DEFAULT 1000,
+    priority INT DEFAULT 5,
+    chunk_size INT DEFAULT 1000,
     total_records BIGINT DEFAULT 0,
     processed_records BIGINT DEFAULT 0,
     failed_records BIGINT DEFAULT 0,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
     error_message TEXT,
-    is_dry_run BOOLEAN NOT NULL DEFAULT FALSE,
+    is_dry_run BOOLEAN DEFAULT FALSE,
     triggered_by CHAR(36),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0,
+    version BIGINT DEFAULT 0,
     INDEX idx_reposting_status (status),
-    INDEX idx_reposting_company_date (company_id, posting_date_from, posting_date_to)
+    INDEX idx_reposting_company_date (company_id, posting_date_from, posting_date_to),
+    INDEX idx_reposting_company (company_id),
+    INDEX idx_reposting_triggered (triggered_by),
+    INDEX idx_reposting_item_warehouse (item_id, warehouse_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Flyway schema history table (created automatically by Flyway)
+SET FOREIGN_KEY_CHECKS = 1;

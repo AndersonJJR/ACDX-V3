@@ -17,11 +17,11 @@ import java.util.UUID;
     @Index(name = "idx_po_status", columnList = "status"),
     @Index(name = "idx_po_date", columnList = "po_date")
 })
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class PurchaseOrder {
 
     @Id
@@ -103,6 +103,82 @@ public class PurchaseOrder {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public String getPoNo() { return poNo; }
+    public void setPoNo(String poNo) { this.poNo = poNo; }
+
+    public Supplier getSupplier() { return supplier; }
+    public void setSupplier(Supplier supplier) { this.supplier = supplier; }
+
+    public LocalDate getPoDate() { return poDate; }
+    public void setPoDate(LocalDate poDate) { this.poDate = poDate; }
+
+    public LocalDate getExpectedDeliveryDate() { return expectedDeliveryDate; }
+    public void setExpectedDeliveryDate(LocalDate expectedDeliveryDate) { this.expectedDeliveryDate = expectedDeliveryDate; }
+
+    public POStatus getStatus() { return status; }
+    public void setStatus(POStatus status) { this.status = status; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
+
+    public BigDecimal getExchangeRate() { return exchangeRate; }
+    public void setExchangeRate(BigDecimal exchangeRate) { this.exchangeRate = exchangeRate; }
+
+    public BigDecimal getTotalQty() { return totalQty; }
+    public void setTotalQty(BigDecimal totalQty) { this.totalQty = totalQty; }
+
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
+
+    public BigDecimal getGrandTotal() { return grandTotal; }
+    public void setGrandTotal(BigDecimal grandTotal) { this.grandTotal = grandTotal; }
+
+    public BigDecimal getAdvancePaid() { return advancePaid; }
+    public void setAdvancePaid(BigDecimal advancePaid) { this.advancePaid = advancePaid; }
+
+    public String getPaymentTerms() { return paymentTerms; }
+    public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
+
+    public String getIncoterm() { return incoterm; }
+    public void setIncoterm(String incoterm) { this.incoterm = incoterm; }
+
+    public String getShippingAddress() { return shippingAddress; }
+    public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
+
+    public String getBillingAddress() { return billingAddress; }
+    public void setBillingAddress(String billingAddress) { this.billingAddress = billingAddress; }
+
+    public String getTermsAndConditions() { return termsAndConditions; }
+    public void setTermsAndConditions(String termsAndConditions) { this.termsAndConditions = termsAndConditions; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+
+    public UUID getApprovedBy() { return approvedBy; }
+    public void setApprovedBy(UUID approvedBy) { this.approvedBy = approvedBy; }
+
+    public LocalDateTime getApprovedAt() { return approvedAt; }
+    public void setApprovedAt(LocalDateTime approvedAt) { this.approvedAt = approvedAt; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public enum POStatus {
         DRAFT, SUBMITTED, APPROVED, PARTIALLY_RECEIVED, RECEIVED, BILLED, COMPLETED, CANCELLED, ON_HOLD

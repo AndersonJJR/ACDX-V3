@@ -11,11 +11,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "item_variants", uniqueConstraints = @UniqueConstraint(columnNames = {"item_id", "variant_code"}))
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class ItemVariant {
 
     @Id
@@ -81,4 +81,65 @@ public class ItemVariant {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public Item getItem() { return item; }
+    public void setItem(Item item) { this.item = item; }
+
+    public String getVariantCode() { return variantCode; }
+    public void setVariantCode(String variantCode) { this.variantCode = variantCode; }
+
+    public String getVariantName() { return variantName; }
+    public void setVariantName(String variantName) { this.variantName = variantName; }
+
+    public String getAttributes() { return attributes; }
+    public void setAttributes(String attributes) { this.attributes = attributes; }
+
+    public String getBarcode() { return barcode; }
+    public void setBarcode(String barcode) { this.barcode = barcode; }
+
+    public BigDecimal getWeight() { return weight; }
+    public void setWeight(BigDecimal weight) { this.weight = weight; }
+
+    public String getWeightUom() { return weightUom; }
+    public void setWeightUom(String weightUom) { this.weightUom = weightUom; }
+
+    public BigDecimal getVolume() { return volume; }
+    public void setVolume(BigDecimal volume) { this.volume = volume; }
+
+    public String getVolumeUom() { return volumeUom; }
+    public void setVolumeUom(String volumeUom) { this.volumeUom = volumeUom; }
+
+    public BigDecimal getLength() { return length; }
+    public void setLength(BigDecimal length) { this.length = length; }
+
+    public BigDecimal getWidth() { return width; }
+    public void setWidth(BigDecimal width) { this.width = width; }
+
+    public BigDecimal getHeight() { return height; }
+    public void setHeight(BigDecimal height) { this.height = height; }
+
+    public String getDimensionUom() { return dimensionUom; }
+    public void setDimensionUom(String dimensionUom) { this.dimensionUom = dimensionUom; }
+
+    public BigDecimal getStandardRate() { return standardRate; }
+    public void setStandardRate(BigDecimal standardRate) { this.standardRate = standardRate; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

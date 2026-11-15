@@ -20,19 +20,17 @@ public class ThreeWayMatchProcessor {
 
     @RabbitListener(queues = "${app.messaging.queue.three-way-match:finance.purchase_invoice.created}")
     public void handlePurchaseInvoiceCreated(PurchaseInvoiceCreatedEvent event) {
-        log.info("Received purchase invoice created event: invoiceId={}, companyId={}", event.invoiceId(), event.companyId());
+        log.info("Received purchase invoice created event: invoiceId={}, companyId={}", event.getInvoiceId(), event.getCompanyId());
 
         try {
-            ProcessPurchaseInvoiceUseCase.Input input = new ProcessPurchaseInvoiceUseCase.Input(event.invoiceId());
+            ProcessPurchaseInvoiceUseCase.Input input = new ProcessPurchaseInvoiceUseCase.Input(event.getInvoiceId());
             ProcessPurchaseInvoiceUseCase.Output output = processPurchaseInvoiceUseCase.execute(input);
 
             log.info("3-way match completed for invoice: {}. Matched: {}, Mismatches: {}",
-                    event.invoiceId(), output.fullyMatched(), output.mismatches().size());
+                    event.getInvoiceId(), output.fullyMatched(), output.mismatches().size());
 
         } catch (Exception e) {
-            log.error("Error processing 3-way match for invoice: {}", event.invoiceId(), e);
-            // Don't rethrow - let the message be acknowledged to avoid infinite retries
-            // In production, consider dead letter queue for failed messages
+            log.error("Error processing 3-way match for invoice: {}", event.getInvoiceId(), e);
         }
     }
 }

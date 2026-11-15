@@ -10,11 +10,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "locations", uniqueConstraints = @UniqueConstraint(columnNames = {"warehouse_id", "code"}))
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(of = "id")
 public class Location {
 
     @Id
@@ -69,6 +69,55 @@ public class Location {
 
     @Version
     private Long version;
+
+    // Explicit getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
+
+    public Warehouse getWarehouse() { return warehouse; }
+    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
+
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public LocationType getLocationType() { return locationType; }
+    public void setLocationType(LocationType locationType) { this.locationType = locationType; }
+
+    public String getAisle() { return aisle; }
+    public void setAisle(String aisle) { this.aisle = aisle; }
+
+    public String getRack() { return rack; }
+    public void setRack(String rack) { this.rack = rack; }
+
+    public String getShelf() { return shelf; }
+    public void setShelf(String shelf) { this.shelf = shelf; }
+
+    public String getBin() { return bin; }
+    public void setBin(String bin) { this.bin = bin; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
+    public Boolean getIsPickable() { return isPickable; }
+    public void setIsPickable(Boolean isPickable) { this.isPickable = isPickable; }
+
+    public Boolean getIsReceivable() { return isReceivable; }
+    public void setIsReceivable(Boolean isReceivable) { this.isReceivable = isReceivable; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public enum LocationType {
         RECEIVING, STORAGE, PICKING, PACKING, SHIPPING, QUARANTINE, DAMAGED, TRANSIT
