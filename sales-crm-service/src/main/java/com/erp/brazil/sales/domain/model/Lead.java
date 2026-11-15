@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -11,11 +9,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "leads")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Lead extends BaseEntity {
     
     @Column(name = "company_id", nullable = false)
@@ -86,12 +79,10 @@ public class Lead extends BaseEntity {
     private PipelineStage currentStage;
     
     @OneToMany(mappedBy = "lead", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Opportunity> opportunities = new ArrayList<>();
+        private List<Opportunity> opportunities = new ArrayList<>();
     
     @OneToMany(mappedBy = "lead", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<LeadActivity> activities = new ArrayList<>();
+        private List<LeadActivity> activities = new ArrayList<>();
     
     public boolean isConverted() {
         return status == LeadStatus.CONVERTED;

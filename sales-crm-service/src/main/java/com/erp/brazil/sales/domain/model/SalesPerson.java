@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -11,11 +9,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "sales_persons")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class SalesPerson extends BaseEntity {
 
     @Column(name = "company_id", nullable = false)
@@ -60,42 +53,59 @@ public class SalesPerson extends BaseEntity {
     private SalesTeam salesTeam;
 
     @OneToMany(mappedBy = "salesPerson", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Customer> customers = new ArrayList<>();
+        private List<Customer> customers = new ArrayList<>();
 
     @OneToMany(mappedBy = "salesPerson", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Lead> leads = new ArrayList<>();
+        private List<Lead> leads = new ArrayList<>();
 
     @OneToMany(mappedBy = "salesPerson", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Opportunity> opportunities = new ArrayList<>();
+        private List<Opportunity> opportunities = new ArrayList<>();
 
     @OneToMany(mappedBy = "preparedBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Quotation> preparedQuotations = new ArrayList<>();
+        private List<Quotation> preparedQuotations = new ArrayList<>();
 
     @OneToMany(mappedBy = "approvedBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Quotation> approvedQuotations = new ArrayList<>();
+        private List<Quotation> approvedQuotations = new ArrayList<>();
 
     @OneToMany(mappedBy = "salesPerson", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<SalesOrder> salesOrders = new ArrayList<>();
+        private List<SalesOrder> salesOrders = new ArrayList<>();
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<LeadActivity> leadActivities = new ArrayList<>();
+        private List<LeadActivity> leadActivities = new ArrayList<>();
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<OpportunityActivity> opportunityActivities = new ArrayList<>();
+        private List<OpportunityActivity> opportunityActivities = new ArrayList<>();
 
     @OneToMany(mappedBy = "salesPerson", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<CommissionRule> commissionRules = new ArrayList<>();
+        private List<CommissionRule> commissionRules = new ArrayList<>();
 
     @OneToMany(mappedBy = "salesPerson", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<CommissionPayment> commissionPayments = new ArrayList<>();
+        private List<CommissionPayment> commissionPayments = new ArrayList<>();
+
+    public UUID getCompanyId() { return companyId; }
+    public String getEmployeeId() { return employeeId; }
+    public String getUserId() { return userId; }
+    public String getFullName() { return fullName; }
+    public String getEmail() { return email; }
+    public String getPhone() { return phone; }
+    public String getMobile() { return mobile; }
+    public BigDecimal getCommissionRate() { return commissionRate; }
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    public java.time.LocalDate getHireDate() { return hireDate; }
+    public java.time.LocalDate getTerminationDate() { return terminationDate; }
+    public Territory getTerritory() { return territory; }
+    public void setTerritory(Territory territory) { this.territory = territory; }
+    public SalesTeam getSalesTeam() { return salesTeam; }
+    public void setSalesTeam(SalesTeam salesTeam) { this.salesTeam = salesTeam; }
+    public List<Customer> getCustomers() { return customers; }
+    public List<Lead> getLeads() { return leads; }
+    public List<Opportunity> getOpportunities() { return opportunities; }
+    public List<Quotation> getPreparedQuotations() { return preparedQuotations; }
+    public List<Quotation> getApprovedQuotations() { return approvedQuotations; }
+    public List<SalesOrder> getSalesOrders() { return salesOrders; }
+    public List<LeadActivity> getLeadActivities() { return leadActivities; }
+    public List<OpportunityActivity> getOpportunityActivities() { return opportunityActivities; }
+    public List<CommissionRule> getCommissionRules() { return commissionRules; }
+    public List<CommissionPayment> getCommissionPayments() { return commissionPayments; }
 }

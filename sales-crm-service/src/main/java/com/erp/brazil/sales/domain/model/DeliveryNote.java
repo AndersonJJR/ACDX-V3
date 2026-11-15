@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,11 +11,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "delivery_notes")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class DeliveryNote extends BaseEntity {
     
     @Column(name = "company_id", nullable = false)
@@ -100,8 +93,7 @@ public class DeliveryNote extends BaseEntity {
     private UUID carrierId;
     
     @OneToMany(mappedBy = "deliveryNote", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<DeliveryNoteItem> items = new ArrayList<>();
+        private List<DeliveryNoteItem> items = new ArrayList<>();
     
     public boolean canBeConfirmed() {
         return status == DeliveryNoteStatus.DRAFT && !items.isEmpty();

@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,11 +10,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "customers")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Customer extends BaseEntity {
     
     @Column(name = "company_id", nullable = false)
@@ -81,33 +74,26 @@ public class Customer extends BaseEntity {
     private String notes;
     
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Address> addresses = new ArrayList<>();
+        private List<Address> addresses = new ArrayList<>();
     
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Contact> contacts = new ArrayList<>();
+        private List<Contact> contacts = new ArrayList<>();
     
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Lead> leads = new ArrayList<>();
+        private List<Lead> leads = new ArrayList<>();
     
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Opportunity> opportunities = new ArrayList<>();
+        private List<Opportunity> opportunities = new ArrayList<>();
     
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Quotation> quotations = new ArrayList<>();
+        private List<Quotation> quotations = new ArrayList<>();
     
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<SalesOrder> salesOrders = new ArrayList<>();
+        private List<SalesOrder> salesOrders = new ArrayList<>();
     
     // LGPD Consent tracking
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<LGPDConsent> lgpdConsents = new ArrayList<>();
+        private List<LGPDConsent> lgpdConsents = new ArrayList<>();
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "territory_id")
@@ -119,7 +105,7 @@ public class Customer extends BaseEntity {
     
     public Address getDefaultBillingAddress() {
         return addresses.stream()
-            .filter(a -> a.getAddressType() == Address.AddressType.BILLING && a.getIsDefault())
+            .filter(a -> a.getAddressType() == Address.AddressType.BILLING && a.isDefault())
             .findFirst()
             .orElse(addresses.stream()
                 .filter(a -> a.getAddressType() == Address.AddressType.BILLING)
@@ -129,7 +115,7 @@ public class Customer extends BaseEntity {
     
     public Address getDefaultShippingAddress() {
         return addresses.stream()
-            .filter(a -> a.getAddressType() == Address.AddressType.SHIPPING && a.getIsDefault())
+            .filter(a -> a.getAddressType() == Address.AddressType.SHIPPING && a.isDefault())
             .findFirst()
             .orElse(addresses.stream()
                 .filter(a -> a.getAddressType() == Address.AddressType.SHIPPING)
@@ -139,7 +125,7 @@ public class Customer extends BaseEntity {
     
     public Contact getPrimaryContact() {
         return contacts.stream()
-            .filter(Contact::getIsPrimary)
+            .filter(Contact::isPrimary)
             .findFirst()
             .orElse(contacts.isEmpty() ? null : contacts.get(0));
     }

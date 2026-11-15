@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,11 +11,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "quotations")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Quotation extends BaseEntity {
     
     @Column(name = "company_id", nullable = false)
@@ -122,12 +115,10 @@ public class Quotation extends BaseEntity {
     private SalesPerson approvedBy;
     
     @OneToMany(mappedBy = "quotation", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<QuotationItem> items = new ArrayList<>();
+        private List<QuotationItem> items = new ArrayList<>();
     
     @OneToMany(mappedBy = "quotation", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<QuotationVersion> versions = new ArrayList<>();
+        private List<QuotationVersion> versions = new ArrayList<>();
     
     @OneToOne(mappedBy = "quotation", cascade = CascadeType.ALL, orphanRemoval = true)
     private SalesOrder salesOrder;

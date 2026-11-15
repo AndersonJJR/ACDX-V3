@@ -1,20 +1,15 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "sales_order_items")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class SalesOrderItem extends BaseEntity {
     
     @Column(name = "order_id", nullable = false)
@@ -55,8 +50,7 @@ public class SalesOrderItem extends BaseEntity {
     private SalesOrder salesOrder;
     
     @OneToMany(mappedBy = "salesOrderItem", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<DeliveryNoteItem> deliveryNoteItems = new ArrayList<>();
+        private List<DeliveryNoteItem> deliveryNoteItems = new ArrayList<>();
     
     @PrePersist
     @PreUpdate

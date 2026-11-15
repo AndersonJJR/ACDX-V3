@@ -1,21 +1,17 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
 @Table(name = "sales_invoice_items")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class SalesInvoiceItem extends BaseEntity {
     
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
     @Column(name = "product_id", nullable = false)
     private UUID productId;
     

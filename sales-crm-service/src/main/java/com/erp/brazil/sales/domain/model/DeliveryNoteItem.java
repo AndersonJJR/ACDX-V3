@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -10,11 +8,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "delivery_note_items")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class DeliveryNoteItem extends BaseEntity {
     
     @Column(name = "delivery_note_id", nullable = false)

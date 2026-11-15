@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,13 +9,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "quotation_versions")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class QuotationVersion extends BaseEntity {
     
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
     @Column(name = "version_number", nullable = false)
     private Integer versionNumber;
     

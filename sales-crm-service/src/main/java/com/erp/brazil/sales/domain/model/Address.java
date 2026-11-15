@@ -1,20 +1,16 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "addresses")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Address extends BaseEntity {
     
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
     @Column(name = "street", length = 200)
     private String street;
     
@@ -48,6 +44,121 @@ public class Address extends BaseEntity {
     
     @Column(name = "ibge_code", length = 7)
     private String ibgeCode;
+    
+    public Address() {}
+    
+    public Address(UUID companyId, String street, String number, String complement, String neighborhood, 
+                   String city, String state, String zipCode, String country, AddressType addressType, 
+                   Boolean isDefault, String ibgeCode) {
+        this.companyId = companyId;
+        this.street = street;
+        this.number = number;
+        this.complement = complement;
+        this.neighborhood = neighborhood;
+        this.city = city;
+        this.state = state;
+        this.zipCode = zipCode;
+        this.country = country;
+        this.addressType = addressType;
+        this.isDefault = isDefault;
+        this.ibgeCode = ibgeCode;
+    }
+    
+    public UUID getCompanyId() {
+        return companyId;
+    }
+    
+    public void setCompanyId(UUID companyId) {
+        this.companyId = companyId;
+    }
+    
+    public String getStreet() {
+        return street;
+    }
+    
+    public void setStreet(String street) {
+        this.street = street;
+    }
+    
+    public String getNumber() {
+        return number;
+    }
+    
+    public void setNumber(String number) {
+        this.number = number;
+    }
+    
+    public String getComplement() {
+        return complement;
+    }
+    
+    public void setComplement(String complement) {
+        this.complement = complement;
+    }
+    
+    public String getNeighborhood() {
+        return neighborhood;
+    }
+    
+    public void setNeighborhood(String neighborhood) {
+        this.neighborhood = neighborhood;
+    }
+    
+    public String getCity() {
+        return city;
+    }
+    
+    public void setCity(String city) {
+        this.city = city;
+    }
+    
+    public String getState() {
+        return state;
+    }
+    
+    public void setState(String state) {
+        this.state = state;
+    }
+    
+    public String getZipCode() {
+        return zipCode;
+    }
+    
+    public void setZipCode(String zipCode) {
+        this.zipCode = zipCode;
+    }
+    
+    public String getCountry() {
+        return country;
+    }
+    
+    public void setCountry(String country) {
+        this.country = country;
+    }
+    
+    public AddressType getAddressType() {
+        return addressType;
+    }
+    
+    public void setAddressType(AddressType addressType) {
+        this.addressType = addressType;
+    }
+    
+    public Boolean isDefault() {
+        return isDefault;
+    }
+    
+    public void setDefault(Boolean isDefault) {
+        this.isDefault = isDefault;
+    }
+    
+    public String getIbgeCode() {
+        return ibgeCode;
+    }
+    
+    public void setIbgeCode(String ibgeCode) {
+        this.ibgeCode = ibgeCode;
+    }
     
     public enum AddressType {
         BILLING,

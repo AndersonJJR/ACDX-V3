@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,11 +10,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "opportunities")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Opportunity extends BaseEntity {
     
     @Column(name = "company_id", nullable = false)
@@ -88,16 +81,13 @@ public class Opportunity extends BaseEntity {
     private PipelineStage currentStage;
     
     @OneToMany(mappedBy = "opportunity", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Quotation> quotations = new ArrayList<>();
+        private List<Quotation> quotations = new ArrayList<>();
     
     @OneToMany(mappedBy = "opportunity", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<OpportunityActivity> activities = new ArrayList<>();
+        private List<OpportunityActivity> activities = new ArrayList<>();
     
     @OneToMany(mappedBy = "opportunity", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<OpportunityProduct> products = new ArrayList<>();
+        private List<OpportunityProduct> products = new ArrayList<>();
     
     @PrePersist
     @PreUpdate

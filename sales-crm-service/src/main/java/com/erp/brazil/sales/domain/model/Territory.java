@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,11 +8,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "territories")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Territory extends BaseEntity {
     
     @Column(name = "company_id", nullable = false)
@@ -46,26 +39,20 @@ public class Territory extends BaseEntity {
     private Territory parentTerritory;
     
     @OneToMany(mappedBy = "parentTerritory", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Territory> subTerritories = new ArrayList<>();
+        private List<Territory> subTerritories = new ArrayList<>();
     
     @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Customer> customers = new ArrayList<>();
+        private List<Customer> customers = new ArrayList<>();
     
     @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Lead> leads = new ArrayList<>();
+        private List<Lead> leads = new ArrayList<>();
     
     @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Opportunity> opportunities = new ArrayList<>();
+        private List<Opportunity> opportunities = new ArrayList<>();
     
     @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<SalesPerson> salesPersons = new ArrayList<>();
+        private List<SalesPerson> salesPersons = new ArrayList<>();
     
     @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<CommissionRule> commissionRules = new ArrayList<>();
+        private List<CommissionRule> commissionRules = new ArrayList<>();
 }

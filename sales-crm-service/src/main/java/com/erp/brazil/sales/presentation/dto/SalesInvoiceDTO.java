@@ -1,0 +1,91 @@
+package com.erp.brazil.sales.presentation.dto;
+
+import com.erp.brazil.sales.domain.model.InvoiceStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+public record SalesInvoiceDTO(
+        UUID id,
+        UUID companyId,
+        String number,
+        String series,
+        String accessKey,
+        String xmlPath,
+        InvoiceStatus status,
+        LocalDate issueDate,
+        LocalDate operationDate,
+        LocalDate dueDate,
+        String invoiceType,
+        String natureOfOperation,
+        BigDecimal subtotal,
+        BigDecimal discountAmount,
+        BigDecimal taxIcms,
+        BigDecimal taxIpi,
+        BigDecimal taxPis,
+        BigDecimal taxCofins,
+        BigDecimal taxIss,
+        BigDecimal totalTax,
+        BigDecimal freightValue,
+        BigDecimal insuranceValue,
+        BigDecimal otherExpenses,
+        BigDecimal totalAmount,
+        String currency,
+        LocalDateTime authorizedAt,
+        LocalDateTime cancelledAt,
+        UUID cancelledById,
+        String cancelledByName,
+        String cancellationReason,
+        String xmlContent,
+        UUID salesOrderId,
+        String salesOrderNumber,
+        UUID deliveryNoteId,
+        String deliveryNoteNumber,
+        UUID customerId,
+        String customerName,
+        UUID billingAddressId,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt,
+        List<SalesInvoiceItemDTO> items,
+        List<PaymentDTO> payments
+) {
+    public record SalesInvoiceItemDTO(
+            UUID id,
+            Integer lineNumber,
+            UUID productId,
+            String productCode,
+            String productName,
+            String description,
+            BigDecimal quantity,
+            String unitOfMeasure,
+            BigDecimal unitPrice,
+            BigDecimal discountAmount,
+            BigDecimal taxIcms,
+            BigDecimal taxIpi,
+            BigDecimal taxPis,
+            BigDecimal taxCofins,
+            BigDecimal taxIss,
+            BigDecimal totalTax,
+            BigDecimal totalAmount,
+            String cfop,
+            String ncm,
+            String cest
+    ) {}
+
+    public record PaymentDTO(
+            UUID id,
+            String paymentMethod,
+            BigDecimal amount,
+            LocalDate dueDate,
+            LocalDate paidDate,
+            com.erp.brazil.sales.domain.model.Payment.PaymentStatus status,
+            String transactionId,
+            String notes
+    ) {}
+}

@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,27 +11,22 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "sales_invoices")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class SalesInvoice extends BaseEntity {
     
-    @Column(name = "invoice_code", length = 20, unique = true, nullable = false)
-    private String invoiceCode;
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
+    @Column(name = "number", length = 20, unique = true, nullable = false)
+    private String number;
     
-    @Column(name = "nf_number", length = 20)
-    private String nfNumber;
+    @Column(name = "series", length = 10)
+    private String series;
     
-    @Column(name = "nf_series", length = 10)
-    private String nfSeries;
+    @Column(name = "access_key", length = 50)
+    private String accessKey;
     
-    @Column(name = "nf_key", length = 50)
-    private String nfKey;
-    
-    @Column(name = "nf_protocol", length = 50)
-    private String nfProtocol;
+    @Column(name = "xml_path", columnDefinition = "TEXT")
+    private String xmlPath;
     
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
@@ -118,6 +111,13 @@ public class SalesInvoice extends BaseEntity {
     @JoinColumn(name = "sales_order_id")
     private SalesOrder salesOrder;
     
+    @Column(name = "delivery_note_id")
+    private UUID deliveryNoteId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delivery_note_id", insertable = false, updatable = false)
+    private DeliveryNote deliveryNote;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
@@ -127,12 +127,10 @@ public class SalesInvoice extends BaseEntity {
     private Address billingAddress;
     
     @OneToMany(mappedBy = "salesInvoice", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<SalesInvoiceItem> items = new ArrayList<>();
+        private List<SalesInvoiceItem> items = new ArrayList<>();
     
     @OneToMany(mappedBy = "salesInvoice", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Payment> payments = new ArrayList<>();
+        private List<Payment> payments = new ArrayList<>();
     
     public BigDecimal getOutstandingAmount() {
         BigDecimal paid = payments.stream()
@@ -149,4 +147,49 @@ public class SalesInvoice extends BaseEntity {
     public boolean isOverdue() {
         return dueDate != null && LocalDate.now().isAfter(dueDate) && !isFullyPaid();
     }
+
+    public UUID getCompanyId() { return companyId; }
+    public String getNumber() { return number; }
+    public String getSeries() { return series; }
+    public String getAccessKey() { return accessKey; }
+    public void setAccessKey(String accessKey) { this.accessKey = accessKey; }
+    public String getXmlPath() { return xmlPath; }
+    public void setXmlPath(String xmlPath) { this.xmlPath = xmlPath; }
+    public InvoiceStatus getStatus() { return status; }
+    public void setStatus(InvoiceStatus status) { this.status = status; }
+    public LocalDate getIssueDate() { return issueDate; }
+    public LocalDate getOperationDate() { return operationDate; }
+    public LocalDate getDueDate() { return dueDate; }
+    public String getInvoiceType() { return invoiceType; }
+    public String getNatureOfOperation() { return natureOfOperation; }
+    public BigDecimal getSubtotal() { return subtotal; }
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public BigDecimal getTaxIcms() { return taxIcms; }
+    public BigDecimal getTaxIpi() { return taxIpi; }
+    public BigDecimal getTaxPis() { return taxPis; }
+    public BigDecimal getTaxCofins() { return taxCofins; }
+    public BigDecimal getTaxIss() { return taxIss; }
+    public BigDecimal getTotalTax() { return totalTax; }
+    public BigDecimal getFreightValue() { return freightValue; }
+    public BigDecimal getInsuranceValue() { return insuranceValue; }
+    public BigDecimal getOtherExpenses() { return otherExpenses; }
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public String getCurrency() { return currency; }
+    public LocalDateTime getAuthorizedAt() { return authorizedAt; }
+    public void setAuthorizedAt(LocalDateTime authorizedAt) { this.authorizedAt = authorizedAt; }
+    public LocalDateTime getCancelledAt() { return cancelledAt; }
+    public UUID getCancelledById() { return cancelledById; }
+    public String getCancellationReason() { return cancellationReason; }
+    public String getXmlContent() { return xmlContent; }
+    public void setXmlContent(String xmlContent) { this.xmlContent = xmlContent; }
+    public byte[] getPdfContent() { return pdfContent; }
+    public void setPdfContent(byte[] pdfContent) { this.pdfContent = pdfContent; }
+    public String getNotes() { return notes; }
+    public SalesOrder getSalesOrder() { return salesOrder; }
+    public UUID getDeliveryNoteId() { return deliveryNoteId; }
+    public DeliveryNote getDeliveryNote() { return deliveryNote; }
+    public Customer getCustomer() { return customer; }
+    public Address getBillingAddress() { return billingAddress; }
+    public List<SalesInvoiceItem> getItems() { return items; }
+    public List<Payment> getPayments() { return payments; }
 }

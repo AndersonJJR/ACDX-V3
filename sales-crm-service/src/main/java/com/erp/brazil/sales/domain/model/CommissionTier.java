@@ -1,19 +1,12 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
 @Table(name = "commission_tiers")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class CommissionTier extends BaseEntity {
     
     @Column(name = "tier_order", nullable = false)
@@ -34,4 +27,11 @@ public class CommissionTier extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "commission_rule_id", nullable = false)
     private CommissionRule commissionRule;
+
+    public Integer getTierOrder() { return tierOrder; }
+    public BigDecimal getMinValue() { return minValue; }
+    public BigDecimal getMaxValue() { return maxValue; }
+    public BigDecimal getPercentageRate() { return percentageRate; }
+    public BigDecimal getFixedAmount() { return fixedAmount; }
+    public CommissionRule getCommissionRule() { return commissionRule; }
 }

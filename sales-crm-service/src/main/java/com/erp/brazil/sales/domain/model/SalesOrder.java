@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,11 +11,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "sales_orders")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class SalesOrder extends BaseEntity {
     
     @Column(name = "company_id", nullable = false)
@@ -119,20 +112,16 @@ public class SalesOrder extends BaseEntity {
     private SalesPerson salesPerson;
     
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<SalesOrderItem> items = new ArrayList<>();
+        private List<SalesOrderItem> items = new ArrayList<>();
     
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<DeliveryNote> deliveryNotes = new ArrayList<>();
+        private List<DeliveryNote> deliveryNotes = new ArrayList<>();
     
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<SalesInvoice> invoices = new ArrayList<>();
+        private List<SalesInvoice> invoices = new ArrayList<>();
     
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<SalesOrderHistory> history = new ArrayList<>();
+        private List<SalesOrderHistory> history = new ArrayList<>();
     
     public boolean canBeConfirmed() {
         return status == SalesOrderStatus.DRAFT && !items.isEmpty();
@@ -150,4 +139,42 @@ public class SalesOrder extends BaseEntity {
     public boolean isPartiallyDelivered() {
         return status == SalesOrderStatus.PARTIALLY_DELIVERED;
     }
+
+    public UUID getCompanyId() { return companyId; }
+    public String getNumber() { return number; }
+    public String getSeries() { return series; }
+    public UUID getQuotationId() { return quotationId; }
+    public SalesOrderStatus getStatus() { return status; }
+    public void setStatus(SalesOrderStatus status) { this.status = status; }
+    public LocalDate getOrderDate() { return orderDate; }
+    public LocalDate getDeliveryDate() { return deliveryDate; }
+    public LocalDateTime getConfirmedAt() { return confirmedAt; }
+    public void setConfirmedAt(LocalDateTime confirmedAt) { this.confirmedAt = confirmedAt; }
+    public UUID getConfirmedById() { return confirmedById; }
+    public void setConfirmedById(UUID confirmedById) { this.confirmedById = confirmedById; }
+    public BigDecimal getSubtotal() { return subtotal; }
+    public BigDecimal getDiscountPercent() { return discountPercent; }
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public BigDecimal getShippingAmount() { return shippingAmount; }
+    public String getCurrency() { return currency; }
+    public String getPaymentTerms() { return paymentTerms; }
+    public String getDeliveryTerms() { return deliveryTerms; }
+    public String getNotes() { return notes; }
+    public String getInternalNotes() { return internalNotes; }
+    public LocalDateTime getCancelledAt() { return cancelledAt; }
+    public UUID getCancelledById() { return cancelledById; }
+    public String getCancellationReason() { return cancellationReason; }
+    public Quotation getQuotation() { return quotation; }
+    public Opportunity getOpportunity() { return opportunity; }
+    public Customer getCustomer() { return customer; }
+    public Contact getContact() { return contact; }
+    public Address getBillingAddress() { return billingAddress; }
+    public Address getShippingAddress() { return shippingAddress; }
+    public SalesPerson getSalesPerson() { return salesPerson; }
+    public List<SalesOrderItem> getItems() { return items; }
+    public List<DeliveryNote> getDeliveryNotes() { return deliveryNotes; }
+    public List<SalesInvoice> getInvoices() { return invoices; }
+    public List<SalesOrderHistory> getHistory() { return history; }
 }

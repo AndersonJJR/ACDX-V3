@@ -1,8 +1,6 @@
 package com.erp.brazil.sales.domain.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,11 +8,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "sales_pipelines")
-@Getter
-@Setter
-@SuperBuilder
-@NoArgsConstructor
-@AllArgsConstructor
 public class SalesPipeline extends BaseEntity {
 
     @Column(name = "company_id", nullable = false)
@@ -40,18 +33,14 @@ public class SalesPipeline extends BaseEntity {
     private SalesTeam salesTeam;
 
     @OneToMany(mappedBy = "pipeline", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<PipelineStage> stages = new ArrayList<>();
+        private List<PipelineStage> stages = new ArrayList<>();
 
     @OneToMany(mappedBy = "pipeline", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Lead> leads = new ArrayList<>();
+        private List<Lead> leads = new ArrayList<>();
 
     @OneToMany(mappedBy = "pipeline", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Opportunity> opportunities = new ArrayList<>();
+        private List<Opportunity> opportunities = new ArrayList<>();
 
     @OneToMany(mappedBy = "pipeline", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<SalesTeam> salesTeams = new ArrayList<>();
+        private List<SalesTeam> salesTeams = new ArrayList<>();
 }
