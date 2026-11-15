@@ -2,179 +2,245 @@ package com.erp.brazil.hr.application.usecase;
 
 import com.erp.brazil.hr.domain.model.*;
 import com.erp.brazil.hr.domain.repository.*;
-import com.erp.brazil.hr.infrastructure.notification.*;
-import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
-@Component
+@Service
+@RequiredArgsConstructor
+@Slf4j
 public class SendNotificationUseCase {
 
     private final NotificationRepository notificationRepository;
     private final NotificationTemplateRepository templateRepository;
     private final EmployeeRepository employeeRepository;
-    private final EmailProvider emailProvider;
-    private final WhatsAppProvider whatsAppProvider;
+    private final CompanyRepository companyRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final EmailNotificationProvider emailProvider;
+    private final WhatsAppNotificationProvider whatsAppProvider;
     private final PushNotificationProvider pushProvider;
-    private final AuditEventUseCase auditEventUseCase;
 
-    public SendNotificationUseCase(NotificationRepository notificationRepository,
-                                    NotificationTemplateRepository templateRepository,
-                                    EmployeeRepository employeeRepository,
-                                    EmailProvider emailProvider,
-                                    WhatsAppProvider whatsAppProvider,
-                                    PushNotificationProvider pushProvider,
-                                    AuditEventUseCase auditEventUseCase) {
-        this.notificationRepository = notificationRepository;
-        this.templateRepository = templateRepository;
-        this.employeeRepository = employeeRepository;
-        this.emailProvider = emailProvider;
-        this.whatsAppProvider = whatsAppProvider;
-        this.pushProvider = pushProvider;
-        this.auditEventUseCase = auditEventUseCase;
-    }
+    private static final String NOTIFICATION_QUEUE_KEY = "hr:notifications:queue";
+    private static final int BATCH_SIZE = 100;
 
     @Transactional
-    public Notification send(Long templateId, Notification.RecipientType recipientType, Long recipientId,
-                              Map<String, Object> context, Instant scheduledAt) {
-        NotificationTemplate template = templateRepository.findById(templateId)
-            .orElseThrow(() -> new IllegalArgumentException("Template not found: " + templateId));
+    public Notification sendNotification(Long companyId, String templateCode, String locale,
+                                         Notification.RecipientType recipientType, Long recipientId,
+                                         Map<String, Object> variables, Instant scheduledAt) {
 
-        if (!template.isActive()) {
-            throw new IllegalStateException("Template is not active: " + templateId);
-        }
+        NotificationTemplate template = templateRepository.findBestMatch(companyId, templateCode, locale)
+            .orElseThrow(() -> new IllegalArgumentException("Template not found: " + templateCode));
 
-        String renderedContent = template.render(context);
-        String renderedSubject = template.renderSubject(context);
-
-        Notification notification = new Notification(
-            null, UUID.randomUUID(), null, templateId, recipientType, recipientId,
-            null, null, template.channel(), renderedSubject, renderedContent,
-            Notification.Priority.NORMAL, Notification.Status.QUEUED,
-            scheduledAt, null, null, null, null, null, 0, 3, null, context
-        );
-
-        // Resolve recipient contact info
-        if (recipientType == Notification.RecipientType.EMPLOYEE && recipientId != null) {
-            Employee employee = employeeRepository.findById(recipientId).orElse(null);
-            if (employee != null) {
-                notification = new Notification(
-                    notification.id(), notification.uuid(), employee.companyId(), notification.templateId(),
-                    notification.recipientType(), notification.recipientId(), employee.email(),
-                    null, notification.channel(), notification.subject(), notification.content(),
-                    notification.priority(), notification.status(), notification.scheduledAt(),
-                    notification.sentAt(), notification.deliveredAt(), notification.readAt(),
-                    notification.failedAt(), notification.failureReason(), notification.retryCount(),
-                    notification.maxRetries(), notification.externalId(), notification.metadata()
-                );
-            }
-        }
-
+        Notification notification = buildNotification(companyId, template, recipientType, recipientId, variables, scheduledAt);
         Notification saved = notificationRepository.save(notification);
 
         if (scheduledAt == null || scheduledAt.isBefore(Instant.now())) {
-            sendAsync(saved);
+            queueForSending(saved);
+        } else {
+            scheduleForSending(saved, scheduledAt);
         }
 
         return saved;
     }
 
     @Transactional
-    public Notification sendDirect(Notification.Channel channel, String recipient, String subject,
-                                    String content, Notification.Priority priority) {
-        Notification notification = new Notification(
-            null, UUID.randomUUID(), null, null, Notification.RecipientType.EXTERNAL, null,
-            channel == Notification.Channel.EMAIL ? recipient : null,
-            channel == Notification.Channel.WHATSAPP || channel == Notification.Channel.SMS ? recipient : null,
-            channel, subject, content, priority, Notification.Status.QUEUED,
-            null, null, null, null, null, null, 0, 3, null, Map.of()
-        );
+    public Notification sendImmediateNotification(Long companyId, NotificationChannel channel,
+                                                  String recipientEmail, String recipientPhone,
+                                                  String subject, String content,
+                                                  NotificationPriority priority) {
+
+        Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
+
+        Notification notification = new Notification();
+        notification.setCompany(company);
+        notification.setChannel(channel);
+        notification.setRecipientType(Notification.RecipientType.EXTERNAL);
+        notification.setRecipientEmail(recipientEmail);
+        notification.setRecipientPhone(recipientPhone);
+        notification.setSubject(subject);
+        notification.setContent(content);
+        notification.setPriority(priority);
+        notification.setStatus(NotificationStatus.QUEUED);
 
         Notification saved = notificationRepository.save(notification);
-        sendAsync(saved);
+        queueForSending(saved);
         return saved;
     }
 
-    private void sendAsync(Notification notification) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                notificationRepository.save(new Notification(
-                    notification.id(), notification.uuid(), notification.companyId(), notification.templateId(),
-                    notification.recipientType(), notification.recipientId(), notification.recipientEmail(),
-                    notification.recipientPhone(), notification.channel(), notification.subject(),
-                    notification.content(), notification.priority(), Notification.Status.SENDING,
-                    notification.scheduledAt(), null, null, null, null, null, notification.retryCount(),
-                    notification.maxRetries(), notification.externalId(), notification.metadata()
-                ));
+    private Notification buildNotification(Long companyId, NotificationTemplate template,
+                                           Notification.RecipientType recipientType, Long recipientId,
+                                           Map<String, Object> variables, Instant scheduledAt) {
 
-                String externalId = switch (notification.channel()) {
-                    case EMAIL -> emailProvider.send(notification.recipientEmail(), notification.subject(), notification.content());
-                    case WHATSAPP -> whatsAppProvider.send(notification.recipientPhone(), notification.content());
-                    case PUSH -> pushProvider.send(notification.recipientId(), notification.subject(), notification.content());
-                    case SMS -> ""; // SMS provider would be implemented similarly
-                    case IN_APP -> ""; // In-app notifications stored in DB
-                };
+        String subject = template.renderSubject(variables);
+        String content = template.render(variables);
 
-                Notification sent = new Notification(
-                    notification.id(), notification.uuid(), notification.companyId(), notification.templateId(),
-                    notification.recipientType(), notification.recipientId(), notification.recipientEmail(),
-                    notification.recipientPhone(), notification.channel(), notification.subject(),
-                    notification.content(), notification.priority(), Notification.Status.SENT,
-                    notification.scheduledAt(), Instant.now(), null, null, null, null, notification.retryCount(),
-                    notification.maxRetries(), externalId, notification.metadata()
-                );
+        String recipientEmail = null;
+        String recipientPhone = null;
 
-                notificationRepository.save(sent);
-                auditEventUseCase.logEvent("NOTIFICATION_SENT", "Notification", notification.uuid().toString(),
-                    notification.companyId(), null, sent);
-            } catch (Exception e) {
-                handleFailure(notification, e);
+        if (recipientId != null && recipientType == Notification.RecipientType.EMPLOYEE) {
+            Employee employee = employeeRepository.findById(recipientId).orElse(null);
+            if (employee != null) {
+                recipientEmail = employee.getEmail();
+                recipientPhone = employee.getPersonalPhone();
             }
-        });
+        }
+
+        Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
+
+        Notification notification = new Notification();
+        notification.setCompany(company);
+        notification.setTemplate(template);
+        notification.setRecipientType(recipientType);
+        notification.setRecipientId(recipientId);
+        notification.setRecipientEmail(recipientEmail);
+        notification.setRecipientPhone(recipientPhone);
+        notification.setChannel(convertChannel(template.getChannel()));
+        notification.setSubject(subject);
+        notification.setContent(content);
+        notification.setPriority(NotificationPriority.NORMAL);
+        notification.setStatus(NotificationStatus.QUEUED);
+        notification.setScheduledAt(scheduledAt);
+
+        return notification;
+    }
+
+    private NotificationChannel convertChannel(NotificationTemplate.Channel templateChannel) {
+        return switch (templateChannel) {
+            case EMAIL -> NotificationChannel.EMAIL;
+            case WHATSAPP -> NotificationChannel.WHATSAPP;
+            case SMS -> NotificationChannel.SMS;
+            case PUSH -> NotificationChannel.PUSH;
+            case IN_APP -> NotificationChannel.IN_APP;
+        };
+    }
+
+    private void queueForSending(Notification notification) {
+        String message = String.format("%s:%d", notification.getId(), System.currentTimeMillis());
+        redisTemplate.opsForList().rightPush(NOTIFICATION_QUEUE_KEY, message);
+        log.debug("Queued notification {} for sending", notification.getId());
+    }
+
+    private void scheduleForSending(Notification notification, Instant scheduledAt) {
+        long delay = java.time.Duration.between(Instant.now(), scheduledAt).toMillis();
+        if (delay > 0) {
+            log.debug("Scheduled notification {} for {}", notification.getId(), scheduledAt);
+        }
+    }
+
+    @Transactional
+    public void processQueue(int batchSize) {
+        List<Object> messages = redisTemplate.opsForList().range(NOTIFICATION_QUEUE_KEY, 0, batchSize - 1);
+        if (messages == null || messages.isEmpty()) return;
+
+        for (Object message : messages) {
+            String[] parts = message.toString().split(":");
+            if (parts.length != 2) continue;
+
+            Long notificationId = Long.parseLong(parts[0]);
+            processNotification(notificationId);
+            redisTemplate.opsForList().leftPop(NOTIFICATION_QUEUE_KEY);
+        }
+    }
+
+    @Transactional
+    public void processNotification(Long notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+            .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
+
+        if (notification.getStatus() != NotificationStatus.QUEUED) {
+            log.warn("Notification {} not in QUEUED status: {}", notificationId, notification.getStatus());
+            return;
+        }
+
+        notification.setStatus(NotificationStatus.SENDING);
+        notificationRepository.save(notification);
+
+        try {
+            switch (notification.getChannel()) {
+                case EMAIL -> sendEmail(notification);
+                case WHATSAPP -> sendWhatsApp(notification);
+                case PUSH -> sendPush(notification);
+                case SMS -> sendSms(notification);
+                case IN_APP -> saveInApp(notification);
+            }
+
+            notification.markSent(UUID.randomUUID().toString());
+            notificationRepository.save(notification);
+
+        } catch (Exception e) {
+            log.error("Failed to send notification {}", notificationId, e);
+            handleFailure(notification, e);
+        }
+    }
+
+    private void sendEmail(Notification notification) {
+        emailProvider.send(notification.getRecipientEmail(), notification.getSubject(), notification.getContent());
+    }
+
+    private void sendWhatsApp(Notification notification) {
+        whatsAppProvider.send(notification.getRecipientPhone(), notification.getContent());
+    }
+
+    private void sendPush(Notification notification) {
+        pushProvider.send(notification.getRecipientId(), notification.getSubject(), notification.getContent());
+    }
+
+    private void sendSms(Notification notification) {
+        // SMS provider integration
+    }
+
+    private void saveInApp(Notification notification) {
+        // In-app notifications are just saved
+        notification.markDelivered();
+        notificationRepository.save(notification);
     }
 
     private void handleFailure(Notification notification, Exception e) {
-        int newRetryCount = notification.retryCount() + 1;
-        Notification.Status newStatus = newRetryCount >= notification.maxRetries()
-            ? Notification.Status.FAILED : Notification.Status.QUEUED;
+        if (notification.canRetry()) {
+            notification.incrementRetry();
+            notificationRepository.save(notification);
 
-        Notification failed = new Notification(
-            notification.id(), notification.uuid(), notification.companyId(), notification.templateId(),
-            notification.recipientType(), notification.recipientId(), notification.recipientEmail(),
-            notification.recipientPhone(), notification.channel(), notification.subject(),
-            notification.content(), notification.priority(), newStatus,
-            notification.scheduledAt(), notification.sentAt(), null, null,
-            Instant.now(), e.getMessage(), newRetryCount, notification.maxRetries(),
-            notification.externalId(), notification.metadata()
-        );
-
-        notificationRepository.save(failed);
-        auditEventUseCase.logEvent("NOTIFICATION_FAILED", "Notification", notification.uuid().toString(),
-            notification.companyId(), null, failed);
+            // Re-queue with exponential backoff
+            long delay = (long) (Math.pow(2, notification.getRetryCount()) * 1000);
+            // Would use delayed queue in production
+            queueForSending(notification);
+        } else {
+            notification.markFailed(e.getMessage());
+            notificationRepository.save(notification);
+        }
     }
 
     @Transactional
-    public void retryFailed(Long notificationId) {
-        Notification notification = notificationRepository.findById(notificationId)
-            .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+    public void retryFailedNotifications() {
+        Instant since = Instant.now().minusSeconds(300); // 5 minutes ago
+        List<Notification> failed = notificationRepository.findFailedNotificationsForRetry(
+            NotificationStatus.FAILED, since);
 
-        if (!notification.canRetry()) {
-            throw new IllegalStateException("Notification cannot be retried");
+        for (Notification notification : failed) {
+            queueForSending(notification);
         }
+    }
 
-        Notification retry = new Notification(
-            notification.id(), notification.uuid(), notification.companyId(), notification.templateId(),
-            notification.recipientType(), notification.recipientId(), notification.recipientEmail(),
-            notification.recipientPhone(), notification.channel(), notification.subject(),
-            notification.content(), notification.priority(), Notification.Status.QUEUED,
-            notification.scheduledAt(), null, null, null, null, null, 0, notification.maxRetries(),
-            null, notification.metadata()
-        );
+    // Provider interfaces
+    public interface EmailNotificationProvider {
+        void send(String to, String subject, String content);
+    }
 
-        notificationRepository.save(retry);
-        sendAsync(retry);
+    public interface WhatsAppNotificationProvider {
+        void send(String phone, String content);
+    }
+
+    public interface PushNotificationProvider {
+        void send(Long recipientId, String title, String content);
     }
 }

@@ -1,16 +1,19 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
-
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "company",
-    uniqueConstraints = @UniqueConstraint(name = "uk_company_cnpj", columnNames = "cnpj"),
-    indexes = @Index(name = "idx_company_active", columnList = "is_active"))
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_company_uuid", columnNames = "uuid"),
+        @UniqueConstraint(name = "uk_company_cnpj", columnNames = "cnpj")
+    },
+    indexes = {
+        @Index(name = "idx_company_cnpj", columnList = "cnpj"),
+        @Index(name = "idx_company_active", columnList = "is_active")
+    })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,7 +32,7 @@ public class Company extends BaseEntity {
 
     @NotBlank
     @Size(max = 18)
-    @Column(name = "cnpj", nullable = false, length = 18, unique = true)
+    @Column(name = "cnpj", nullable = false, unique = true, length = 18)
     private String cnpj;
 
     @Size(max = 20)
@@ -103,34 +106,28 @@ public class Company extends BaseEntity {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "tax_regime", nullable = false, length = 30)
+    @Column(name = "tax_regime", nullable = false, length = 20)
     private TaxRegime taxRegime = TaxRegime.SIMPLES_NACIONAL;
 
     @Column(name = "is_active")
-    private Boolean isActive = true;
+    private boolean isActive = true;
 
     public String getDisplayName() {
         return tradeName != null ? tradeName : corporateName;
     }
 
     public String getFormattedCnpj() {
-        if (cnpj == null || cnpj.length() != 14) return cnpj;
-        return cnpj.substring(0, 2) + "." +
-               cnpj.substring(2, 5) + "." +
-               cnpj.substring(5, 8) + "/" +
-               cnpj.substring(8, 12) + "-" +
-               cnpj.substring(12, 14);
+        if (cnpj == null) return "";
+        String digits = cnpj.replaceAll("[^0-9]", "");
+        if (digits.length() != 14) return cnpj;
+        return digits.substring(0, 2) + "." + digits.substring(2, 5) + "." + digits.substring(5, 8) + "/" + digits.substring(8, 12) + "-" + digits.substring(12, 14);
     }
 
-    public boolean isSimplesNacional() {
-        return taxRegime == TaxRegime.SIMPLES_NACIONAL;
+    public enum CompanySize {
+        MEI, MICRO, SMALL, MEDIUM, LARGE
     }
 
-    public boolean isLucroPresumido() {
-        return taxRegime == TaxRegime.LUCRO_PRESUMIDO;
-    }
-
-    public boolean isLucroReal() {
-        return taxRegime == TaxRegime.LUCRO_REAL;
+    public enum TaxRegime {
+        SIMPLES_NACIONAL, LUCRO_PRESUMIDO, LUCRO_REAL
     }
 }

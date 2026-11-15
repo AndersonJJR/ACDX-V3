@@ -1,14 +1,14 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "dependent",
+    uniqueConstraints = @UniqueConstraint(name = "uk_dependent_uuid", columnNames = "uuid"),
     indexes = {
         @Index(name = "idx_dependent_employee", columnList = "employee_id"),
         @Index(name = "idx_dependent_cpf", columnList = "cpf")
@@ -50,19 +50,19 @@ public class Dependent extends BaseEntity {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "relationship", nullable = false, length = 20)
-    private DependentRelationship relationship;
+    private Relationship relationship;
 
     @Column(name = "is_irrf_dependent")
-    private Boolean isIrrfDependent = false;
+    private boolean isIrrfDependent = false;
 
     @Column(name = "is_health_insurance_dependent")
-    private Boolean isHealthInsuranceDependent = false;
+    private boolean isHealthInsuranceDependent = false;
 
     @Column(name = "is_dental_insurance_dependent")
-    private Boolean isDentalInsuranceDependent = false;
+    private boolean isDentalInsuranceDependent = false;
 
     @Column(name = "is_pension_dependent")
-    private Boolean isPensionDependent = false;
+    private boolean isPensionDependent = false;
 
     @Size(max = 100)
     @Column(name = "disability_certificate", length = 100)
@@ -86,22 +86,24 @@ public class Dependent extends BaseEntity {
         return java.time.Period.between(birthDate, LocalDate.now()).getYears();
     }
 
+    public boolean isMinor() {
+        return getAge() < 18;
+    }
+
     public boolean isStudent() {
-        return studentSince != null &&
-               studentUntil != null &&
-               !studentUntil.isBefore(LocalDate.now());
-    }
-
-    public boolean isTaxDependent() {
-        return isIrrfDependent != null && isIrrfDependent;
-    }
-
-    public boolean isHealthDependent() {
-        return isHealthInsuranceDependent != null && isHealthInsuranceDependent;
+        return studentSince != null && (studentUntil == null || !LocalDate.now().isAfter(studentUntil));
     }
 
     public String getMaskedCpf() {
-        if (cpf == null || cpf.length() != 11) return cpf;
-        return cpf.substring(0, 3) + "***.***" + cpf.substring(9);
+        if (cpf == null || cpf.length() != 14) return "***";
+        return "***.***.***-**";
+    }
+
+    public enum Gender {
+        M, F, O
+    }
+
+    public enum Relationship {
+        SPOUSE, CHILD, STEPCHILD, PARENT, GRANDPARENT, SIBLING, OTHER
     }
 }

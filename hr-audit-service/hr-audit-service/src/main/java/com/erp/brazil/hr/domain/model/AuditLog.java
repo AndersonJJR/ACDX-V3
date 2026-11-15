@@ -13,7 +13,6 @@ import java.util.UUID;
 
 @Document(collection = "audit_logs")
 @CompoundIndex(name = "idx_entity_id_type", def = "{'entityId': 1, 'entityType': 1}")
-@CompoundIndex(name = "idx_timestamp", def = "{'timestamp': -1}", expireAfterSeconds = 2555 * 24 * 60 * 60)
 @CompoundIndex(name = "idx_company_timestamp", def = "{'companyId': 1, 'timestamp': -1}")
 @CompoundIndex(name = "idx_user_timestamp", def = "{'userId': 1, 'timestamp': -1}")
 @Getter
@@ -46,6 +45,7 @@ public class AuditLog {
     private String action; // CREATE, UPDATE, DELETE, VIEW, EXPORT, LOGIN, LOGOUT, etc.
 
     @Field("timestamp")
+    @Indexed(name = "idx_timestamp_ttl", expireAfterSeconds = 2555 * 24 * 60 * 60)
     private Instant timestamp = Instant.now();
 
     @Field("ip_address")

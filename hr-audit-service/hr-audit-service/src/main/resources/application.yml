@@ -184,7 +184,21 @@ app:
 
   payslip:
     output-dir: ${PAYSLIP_OUTPUT_DIR:/tmp/payslips}
+    digital-signature:
+      enabled: ${PAYSLIP_DIGITAL_SIGNATURE_ENABLED:false}
+      keystore-path: ${PAYSLIP_KEYSTORE_PATH:}
+      keystore-password: ${PAYSLIP_KEYSTORE_PASSWORD:}
+      key-alias: ${PAYSLIP_KEY_ALIAS:}
+      key-password: ${PAYSLIP_KEY_PASSWORD:}
 
   lgpd:
     cpft-masking-enabled: true
     audit-ttl-years: 7
+
+# OpenAPI Configuration
+app:
+  openapi:
+    server-url: ${OPENAPI_SERVER_URL:http://localhost:8080/api}
+    title: HR Audit Service API
+    version: 1.0.0
+    description: ERP Brazil - HR, Audit & Notifications Service

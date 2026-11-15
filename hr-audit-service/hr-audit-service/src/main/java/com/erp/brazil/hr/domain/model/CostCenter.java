@@ -1,17 +1,17 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "cost_center",
-    uniqueConstraints = @UniqueConstraint(name = "uk_cost_center_company_code", columnNames = {"company_id", "code"}))
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_cost_center_uuid", columnNames = "uuid"),
+        @UniqueConstraint(name = "uk_cost_center_company_code", columnNames = {"company_id", "code"})
+    })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,8 +20,9 @@ import java.util.List;
 public class CostCenter extends BaseEntity {
 
     @NotNull
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @NotBlank
     @Size(max = 20)
@@ -41,27 +42,13 @@ public class CostCenter extends BaseEntity {
     @JoinColumn(name = "parent_id")
     private CostCenter parent;
 
-    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<CostCenter> children = new ArrayList<>();
-
-    @Column(name = "responsible_id")
-    private Long responsibleId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "responsible_id")
+    private Employee responsible;
 
     @Column(name = "budget_amount", precision = 15, scale = 2)
     private BigDecimal budgetAmount;
 
     @Column(name = "is_active")
-    private Boolean isActive = true;
-
-    public String getFullPath() {
-        if (parent == null) {
-            return name;
-        }
-        return parent.getFullPath() + " > " + name;
-    }
-
-    public boolean isRoot() {
-        return parent == null;
-    }
+    private boolean isActive = true;
 }

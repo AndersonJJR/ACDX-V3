@@ -7,11 +7,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.FilterDefs;
+import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.Where;
 
 import java.time.LocalDate;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +29,8 @@ import java.util.List;
         @Index(name = "idx_employee_hire_date", columnList = "hire_date")
     })
 @SQLDelete(sql = "UPDATE employee SET status = 'TERMINATED', termination_date = CURRENT_DATE WHERE id = ?")
-@Where(clause = "status != 'TERMINATED'")
+@FilterDef(name = "activeEmployeeFilter", parameters = @ParamDef(name = "status", type = String.class))
+@Filter(name = "activeEmployeeFilter", condition = "status != 'TERMINATED'")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -236,8 +239,8 @@ public class Employee extends BaseEntity {
     }
 
     public String getMaskedCpf() {
-        if (cpf == null || cpf.length() != 11) return cpf;
-        return cpf.substring(0, 3) + "***.***" + cpf.substring(9);
+        if (cpf == null || cpf.length() != 14) return cpf;
+        return "***.***.***-**";
     }
 
     public String getMaskedEmail() {
@@ -251,5 +254,21 @@ public class Employee extends BaseEntity {
     public String getMaskedPhone() {
         if (personalPhone == null || personalPhone.length() < 4) return personalPhone;
         return "***" + personalPhone.substring(personalPhone.length() - 4);
+    }
+
+    public enum EmployeeStatus {
+        ACTIVE, INACTIVE, ON_LEAVE, TERMINATED, SUSPENDED
+    }
+
+    public enum Gender {
+        M, F, O
+    }
+
+    public enum MaritalStatus {
+        SINGLE, MARRIED, DIVORCED, WIDOWED, STABLE_UNION
+    }
+
+    public enum BankAccountType {
+        CHECKING, SAVINGS
     }
 }

@@ -1,16 +1,16 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "leave_request",
+    uniqueConstraints = @UniqueConstraint(name = "uk_leave_request_uuid", columnNames = "uuid"),
     indexes = {
         @Index(name = "idx_leave_request_employee", columnList = "employee_id"),
         @Index(name = "idx_leave_request_dates", columnList = "start_date,end_date"),
@@ -42,12 +42,13 @@ public class LeaveRequest extends BaseEntity {
     private LocalDate endDate;
 
     @Column(name = "start_time")
-    private LocalTime startTime;
+    private LocalDateTime startTime;
 
     @Column(name = "end_time")
-    private LocalTime endTime;
+    private LocalDateTime endTime;
 
     @NotNull
+    @DecimalMin("0.01")
     @Column(name = "total_days", nullable = false, precision = 4, scale = 2)
     private BigDecimal totalDays;
 
@@ -65,62 +66,57 @@ public class LeaveRequest extends BaseEntity {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private LeaveRequestStatus status = LeaveRequestStatus.PENDING;
+    private LeaveStatus status = LeaveStatus.PENDING;
 
-    @Column(name = "requested_at", nullable = false)
-    private java.time.Instant requestedAt = java.time.Instant.now();
+    @Column(name = "requested_at", nullable = false, updatable = false)
+    private LocalDateTime requestedAt = LocalDateTime.now();
 
     @Column(name = "approved_at")
-    private java.time.Instant approvedAt;
+    private LocalDateTime approvedAt;
 
-    @Column(name = "approved_by")
-    private Long approvedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private Employee approvedBy;
 
     @Size(max = 500)
     @Column(name = "approval_notes", length = 500)
     private String approvalNotes;
 
     @Column(name = "rejected_at")
-    private java.time.Instant rejectedAt;
+    private LocalDateTime rejectedAt;
 
-    @Column(name = "rejected_by")
-    private Long rejectedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rejected_by")
+    private Employee rejectedBy;
 
     @Size(max = 500)
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
     @Column(name = "cancelled_at")
-    private java.time.Instant cancelledAt;
+    private LocalDateTime cancelledAt;
 
-    @Column(name = "cancelled_by")
-    private Long cancelledBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cancelled_by")
+    private Employee cancelledBy;
 
     @Size(max = 500)
     @Column(name = "cancellation_reason", length = 500)
     private String cancellationReason;
 
+    public boolean isPending() {
+        return status == LeaveStatus.PENDING;
+    }
+
+    public boolean canApprove() {
+        return status == LeaveStatus.PENDING;
+    }
+
     public long getDurationDays() {
         return java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
     }
 
-    public boolean isPending() {
-        return status == LeaveRequestStatus.PENDING;
-    }
-
-    public boolean isApproved() {
-        return status == LeaveRequestStatus.APPROVED;
-    }
-
-    public boolean isRejected() {
-        return status == LeaveRequestStatus.REJECTED;
-    }
-
-    public boolean canBeCancelled() {
-        return status.canBeCancelled();
-    }
-
-    public boolean isFinal() {
-        return status.isFinal();
+    public enum LeaveStatus {
+        PENDING, APPROVED, REJECTED, CANCELLED, EXPIRED
     }
 }

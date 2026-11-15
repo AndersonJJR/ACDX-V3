@@ -1,21 +1,37 @@
 package com.erp.brazil.hr.domain.repository;
 
 import com.erp.brazil.hr.domain.model.Dependent;
+import com.erp.brazil.hr.domain.model.DependentRelationship;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public interface DependentRepository extends JpaRepository<Dependent, Long> {
-    Optional<Dependent> findByUuid(UUID uuid);
+
     List<Dependent> findByEmployeeId(Long employeeId);
-    List<Dependent> findByEmployeeIdAndIsIrrfDependentTrue(Long employeeId);
-    List<Dependent> findByEmployeeIdAndIsHealthInsuranceDependentTrue(Long employeeId);
-    List<Dependent> findByEmployeeIdAndIsDentalInsuranceDependentTrue(Long employeeId);
-    List<Dependent> findByEmployeeIdAndIsPensionDependentTrue(Long employeeId);
-    Optional<Dependent> findByCpf(String cpf);
-    List<Dependent> findByEmployeeIdAndRelationship(Long employeeId, Dependent.Relationship relationship);
-    boolean existsByEmployeeIdAndCpf(Long employeeId, String cpf);
+
+    List<Dependent> findByEmployeeIdAndRelationship(Long employeeId, DependentRelationship relationship);
+
+    Optional<Dependent> findByEmployeeIdAndCpf(Long employeeId, String cpf);
+
+    @Query("SELECT d FROM Dependent d WHERE d.employee.companyId = :companyId AND d.isIrrfDependent = true")
+    List<Dependent> findIrrfDependentsByCompanyId(@Param("companyId") Long companyId);
+
+    @Query("SELECT d FROM Dependent d WHERE d.employee.companyId = :companyId AND d.isHealthInsuranceDependent = true")
+    List<Dependent> findHealthDependentsByCompanyId(@Param("companyId") Long companyId);
+
+    @Query("SELECT d FROM Dependent d WHERE d.employeeId = :employeeId AND d.isIrrfDependent = true")
+    List<Dependent> findIrrfDependentsByEmployeeId(@Param("employeeId") Long employeeId);
+
+    @Query("SELECT d FROM Dependent d WHERE d.employeeId = :employeeId AND d.isHealthInsuranceDependent = true")
+    List<Dependent> findHealthDependentsByEmployeeId(@Param("employeeId") Long employeeId);
+
+    @Query("SELECT d FROM Dependent d WHERE d.employeeId = :employeeId AND d.studentSince IS NOT NULL AND d.studentUntil IS NOT NULL AND d.studentUntil >= :date")
+    List<Dependent> findStudentDependentsByEmployeeId(@Param("employeeId") Long employeeId,
+                                                       @Param("date") java.time.LocalDate date);
 }

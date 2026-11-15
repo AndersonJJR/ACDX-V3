@@ -1,8 +1,7 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -10,7 +9,10 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "collective_agreement",
-    uniqueConstraints = @UniqueConstraint(name = "uk_collective_agreement_union_code", columnNames = {"union_id", "code"}))
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_collective_agreement_uuid", columnNames = "uuid"),
+        @UniqueConstraint(name = "uk_collective_agreement_union_code", columnNames = {"union_id", "code"})
+    })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -47,33 +49,27 @@ public class CollectiveAgreement extends BaseEntity {
     private BigDecimal workJourneyHours;
 
     @Column(name = "overtime_rate_daytime", precision = 4, scale = 2)
-    private BigDecimal overtimeRateDaytime = BigDecimal.valueOf(50.00);
+    private BigDecimal overtimeRateDaytime = BigDecimal.valueOf(50);
 
     @Column(name = "overtime_rate_nighttime", precision = 4, scale = 2)
-    private BigDecimal overtimeRateNighttime = BigDecimal.valueOf(75.00);
+    private BigDecimal overtimeRateNighttime = BigDecimal.valueOf(75);
 
     @Column(name = "overtime_rate_holiday", precision = 4, scale = 2)
-    private BigDecimal overtimeRateHoliday = BigDecimal.valueOf(100.00);
+    private BigDecimal overtimeRateHoliday = BigDecimal.valueOf(100);
 
     @Column(name = "night_shift_additional", precision = 4, scale = 2)
-    private BigDecimal nightShiftAdditional = BigDecimal.valueOf(20.00);
+    private BigDecimal nightShiftAdditional = BigDecimal.valueOf(20);
 
     @Column(name = "hazardous_additional", precision = 4, scale = 2)
-    private BigDecimal hazardousAdditional = BigDecimal.valueOf(30.00);
+    private BigDecimal hazardousAdditional = BigDecimal.valueOf(30);
 
     @Column(name = "unhealthy_additional", precision = 4, scale = 2)
-    private BigDecimal unhealthyAdditional = BigDecimal.valueOf(40.00);
+    private BigDecimal unhealthyAdditional = BigDecimal.valueOf(40);
 
     @Size(max = 500)
     @Column(name = "document_url", length = 500)
     private String documentUrl;
 
     @Column(name = "is_active")
-    private Boolean isActive = true;
-
-    public boolean isActiveOn(LocalDate date) {
-        return isActive &&
-               !startDate.isAfter(date) &&
-               (endDate == null || !endDate.isBefore(date));
-    }
+    private boolean isActive = true;
 }

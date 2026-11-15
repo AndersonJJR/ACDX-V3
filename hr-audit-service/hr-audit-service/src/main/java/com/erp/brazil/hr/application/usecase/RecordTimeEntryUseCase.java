@@ -2,132 +2,281 @@ package com.erp.brazil.hr.application.usecase;
 
 import com.erp.brazil.hr.domain.model.*;
 import com.erp.brazil.hr.domain.repository.*;
-import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
-@Component
+@Service
+@RequiredArgsConstructor
+@Slf4j
 public class RecordTimeEntryUseCase {
 
     private final TimeRecordRepository timeRecordRepository;
     private final EmployeeRepository employeeRepository;
-    private final AuditEventUseCase auditEventUseCase;
+    private final HolidayRepository holidayRepository;
+    private final EmploymentContractRepository contractRepository;
+    private final TimeSheetRepository timeSheetRepository;
 
-    public RecordTimeEntryUseCase(TimeRecordRepository timeRecordRepository,
-                                   EmployeeRepository employeeRepository,
-                                   AuditEventUseCase auditEventUseCase) {
-        this.timeRecordRepository = timeRecordRepository;
-        this.employeeRepository = employeeRepository;
-        this.auditEventUseCase = auditEventUseCase;
-    }
+    private static final int TOLERANCE_MINUTES = 10;
+    private static final int MAX_OVERTIME_HOURS_DAY = 2;
+    private static final int MAX_OVERTIME_HOURS_MONTH = 40;
 
     @Transactional
-    public TimeRecord record(Long employeeId, LocalDate date, TimeRecord.RecordType type,
-                              LocalTime time, TimeRecord.RecordSource source,
-                              Double latitude, Double longitude, String deviceId, String ipAddress) {
+    public TimeRecord recordEntry(Long employeeId, LocalDate date, LocalTime time, TimeRecordType type, TimeRecordSource source) {
         Employee employee = employeeRepository.findById(employeeId)
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
 
         if (!employee.isActive()) {
-            throw new IllegalStateException("Employee is not active: " + employeeId);
+            throw new IllegalStateException("Cannot record time for inactive employee");
         }
-
-        // Validate sequence
-        List<TimeRecord> existingRecords = timeRecordRepository.findByEmployeeIdAndRecordDateOrderByRecordTimeAsc(employeeId, date);
-        validateSequence(existingRecords, type, time);
 
         // Check for duplicate
-        if (timeRecordRepository.existsByEmployeeIdAndRecordDateAndRecordType(employeeId, date, type)) {
-            throw new IllegalStateException("Record already exists for this type on this date");
+        Optional<TimeRecord> existing = timeRecordRepository.findByEmployeeIdAndRecordDateAndRecordType(employeeId, date, type);
+        if (existing.isPresent()) {
+            throw new IllegalStateException("Time record already exists for this employee, date and type");
         }
 
-        TimeRecord record = new TimeRecord(
-            null, UUID.randomUUID(), employeeId, date, type, time, source,
-            latitude, longitude, deviceId, ipAddress, false, null, null, null,
-            TimeRecord.RecordStatus.PENDING, null, null
-        );
+        TimeRecord record = new TimeRecord();
+        record.setEmployee(employee);
+        record.setRecordDate(date);
+        record.setRecordType(type);
+        record.setRecordTime(time);
+        record.setRecordSource(source);
+        record.setStatus(TimeRecordStatus.PENDING);
+
+        // Auto-approve if from automatic source
+        if (source.isAutomatic()) {
+            record.setStatus(TimeRecordStatus.APPROVED);
+            record.setApprovedAt(java.time.Instant.now());
+        }
 
         TimeRecord saved = timeRecordRepository.save(record);
-        auditEventUseCase.logEvent("TIME_RECORD_CREATED", "TimeRecord", saved.uuid().toString(),
-            employee.companyId(), employeeId, saved);
 
-        return saved;
-    }
+        // Update or create time sheet
+        updateTimeSheet(employee, date.getYear(), date.getMonthValue());
 
-    private void validateSequence(List<TimeRecord> existing, TimeRecord.RecordType newType, LocalTime newTime) {
-        if (existing.isEmpty()) {
-            if (newType != TimeRecord.RecordType.ENTRY && newType != TimeRecord.RecordType.OVERTIME_ENTRY) {
-                throw new IllegalStateException("First record of the day must be ENTRY or OVERTIME_ENTRY");
-            }
-            return;
-        }
-
-        TimeRecord lastRecord = existing.get(existing.size() - 1);
-        TimeRecord.RecordType lastType = lastRecord.recordType();
-
-        // Validate sequence: ENTRY -> EXIT_LUNCH -> RETURN_LUNCH -> EXIT
-        // OVERTIME_ENTRY -> OVERTIME_EXIT
-        if (lastType == TimeRecord.RecordType.ENTRY) {
-            if (newType != TimeRecord.RecordType.EXIT_LUNCH && newType != TimeRecord.RecordType.EXIT) {
-                throw new IllegalStateException("After ENTRY, must be EXIT_LUNCH or EXIT");
-            }
-        } else if (lastType == TimeRecord.RecordType.EXIT_LUNCH) {
-            if (newType != TimeRecord.RecordType.RETURN_LUNCH) {
-                throw new IllegalStateException("After EXIT_LUNCH, must be RETURN_LUNCH");
-            }
-        } else if (lastType == TimeRecord.RecordType.RETURN_LUNCH) {
-            if (newType != TimeRecord.RecordType.EXIT) {
-                throw new IllegalStateException("After RETURN_LUNCH, must be EXIT");
-            }
-        } else if (lastType == TimeRecord.RecordType.OVERTIME_ENTRY) {
-            if (newType != TimeRecord.RecordType.OVERTIME_EXIT) {
-                throw new IllegalStateException("After OVERTIME_ENTRY, must be OVERTIME_EXIT");
-            }
-        } else if (lastType == TimeRecord.RecordType.EXIT || lastType == TimeRecord.RecordType.OVERTIME_EXIT) {
-            throw new IllegalStateException("Day already closed, cannot add more records");
-        }
-
-        // Validate time is after last record
-        if (!newTime.isAfter(lastRecord.recordTime())) {
-            throw new IllegalStateException("Record time must be after previous record");
-        }
-    }
-
-    @Transactional
-    public TimeRecord adjust(Long recordId, Long adjustedBy, String reason, LocalTime newTime) {
-        TimeRecord record = timeRecordRepository.findById(recordId)
-            .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
-
-        TimeRecord adjusted = new TimeRecord(
-            record.id(), record.uuid(), record.employeeId(), record.recordDate(), record.recordType(),
-            newTime, record.recordSource(), record.latitude(), record.longitude(),
-            record.deviceId(), record.ipAddress(), true, reason, adjustedBy, java.time.Instant.now(),
-            TimeRecord.RecordStatus.PENDING, null, null
-        );
-
-        TimeRecord saved = timeRecordRepository.save(adjusted);
-        auditEventUseCase.logEvent("TIME_RECORD_ADJUSTED", "TimeRecord", saved.uuid().toString(),
-            null, adjustedBy, saved);
-
+        log.info("Time record created for employee {}: {} at {}", employeeId, type, time);
         return saved;
     }
 
     @Transactional
-    public TimeRecord approve(Long recordId, Long approvedBy) {
-        TimeRecord record = timeRecordRepository.findById(recordId)
-            .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
+    public TimeRecord recordBiometricEntry(Long employeeId, LocalDate date, LocalTime time, String deviceId) {
+        TimeRecord record = new TimeRecord();
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
 
-        TimeRecord approved = new TimeRecord(
-            record.id(), record.uuid(), record.employeeId(), record.recordDate(), record.recordType(),
-            record.recordTime(), record.recordSource(), record.latitude(), record.longitude(),
-            record.deviceId(), record.ipAddress(), record.isManualAdjustment(), record.adjustmentReason(),
-            record.adjustedBy(), record.adjustedAt(), TimeRecord.RecordStatus.APPROVED, approvedBy, java.time.Instant.now()
+        record.setEmployee(employee);
+        record.setRecordDate(date);
+        record.setRecordType(TimeRecordType.ENTRY);
+        record.setRecordTime(time);
+        record.setRecordSource(TimeRecordSource.BIOMETRIC);
+        record.setDeviceId(deviceId);
+        record.setStatus(TimeRecordStatus.APPROVED);
+        record.setApprovedAt(java.time.Instant.now());
+
+        TimeRecord saved = timeRecordRepository.save(record);
+        updateTimeSheet(employee, date.getYear(), date.getMonthValue());
+        return saved;
+    }
+
+    @Transactional
+    public TimeRecord recordMobileEntry(Long employeeId, LocalDate date, LocalTime time, Double latitude, Double longitude) {
+        TimeRecord record = new TimeRecord();
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
+
+        record.setEmployee(employee);
+        record.setRecordDate(date);
+        record.setRecordType(TimeRecordType.ENTRY);
+        record.setRecordTime(time);
+        record.setRecordSource(TimeRecordSource.MOBILE_APP);
+        record.setLatitude(latitude);
+        record.setLongitude(longitude);
+        record.setStatus(TimeRecordStatus.APPROVED);
+        record.setApprovedAt(java.time.Instant.now());
+
+        TimeRecord saved = timeRecordRepository.save(record);
+        updateTimeSheet(employee, date.getYear(), date.getMonthValue());
+        return saved;
+    }
+
+    @Transactional
+    public TimeRecord recordManualAdjustment(Long employeeId, LocalDate date, TimeRecordType type,
+                                             LocalTime time, String reason, Long adjustedBy) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
+
+        Employee adjustedByEmployee = employeeRepository.findById(adjustedBy)
+                .orElseThrow(() -> new IllegalArgumentException("Adjusted by employee not found"));
+
+        Optional<TimeRecord> existing = timeRecordRepository.findByEmployeeIdAndRecordDateAndRecordType(employeeId, date, type);
+        TimeRecord record;
+        if (existing.isPresent()) {
+            record = existing.get();
+            record.setAdjustedBy(adjustedByEmployee);
+            record.setAdjustedAt(java.time.Instant.now());
+            record.setAdjustmentReason(reason);
+            record.setIsManualAdjustment(true);
+            record.setRecordTime(time);
+            record.setStatus(TimeRecordStatus.PENDING);
+        } else {
+            record = new TimeRecord();
+            record.setEmployee(employee);
+            record.setRecordDate(date);
+            record.setRecordType(type);
+            record.setRecordTime(time);
+            record.setRecordSource(TimeRecordSource.MANUAL);
+            record.setIsManualAdjustment(true);
+            record.setAdjustmentReason(reason);
+            record.setAdjustedBy(adjustedByEmployee);
+            record.setAdjustedAt(java.time.Instant.now());
+            record.setStatus(TimeRecordStatus.PENDING);
+        }
+
+        TimeRecord saved = timeRecordRepository.save(record);
+        updateTimeSheet(employee, date.getYear(), date.getMonthValue());
+        return saved;
+    }
+
+    @Transactional
+    public void approveRecord(Long recordId, Long approvedBy) {
+        TimeRecord record = timeRecordRepository.findById(recordId)
+                .orElseThrow(() -> new IllegalArgumentException("Time record not found"));
+
+        if (record.getStatus() != TimeRecordStatus.PENDING) {
+            throw new IllegalStateException("Only pending records can be approved");
+        }
+
+        Employee approvedByEmployee = employeeRepository.findById(approvedBy)
+                .orElseThrow(() -> new IllegalArgumentException("Approved by employee not found"));
+
+        record.setStatus(TimeRecordStatus.APPROVED);
+        record.setApprovedBy(approvedByEmployee);
+        record.setApprovedAt(java.time.Instant.now());
+        timeRecordRepository.save(record);
+
+        updateTimeSheet(record.getEmployee(), record.getRecordDate().getYear(), record.getRecordDate().getMonthValue());
+    }
+
+    @Transactional
+    public void rejectRecord(Long recordId, Long rejectedBy, String reason) {
+        TimeRecord record = timeRecordRepository.findById(recordId)
+                .orElseThrow(() -> new IllegalArgumentException("Time record not found"));
+
+        if (record.getStatus() != TimeRecordStatus.PENDING) {
+            throw new IllegalStateException("Only pending records can be rejected");
+        }
+
+        Employee rejectedByEmployee = employeeRepository.findById(rejectedBy)
+                .orElseThrow(() -> new IllegalArgumentException("Rejected by employee not found"));
+
+        record.setStatus(TimeRecordStatus.REJECTED);
+        record.setApprovedBy(rejectedByEmployee);
+        record.setApprovedAt(java.time.Instant.now());
+        record.setAdjustmentReason(reason);
+        timeRecordRepository.save(record);
+    }
+
+    public List<TimeRecord> getEmployeeRecords(Long employeeId, LocalDate startDate, LocalDate endDate) {
+        return timeRecordRepository.findByEmployeeIdAndRecordDateBetween(employeeId, startDate, endDate);
+    }
+
+    public List<TimeRecord> getPendingRecords(Long companyId) {
+        // Would need a custom query
+        return List.of();
+    }
+
+    private void updateTimeSheet(Employee employee, int year, int month) {
+        List<TimeRecord> records = timeRecordRepository.findByEmployeeIdAndRecordDateBetween(
+                employee.getId(),
+                LocalDate.of(year, month, 1),
+                LocalDate.of(year, month, 1).withDayOfMonth(LocalDate.of(year, month, 1).lengthOfMonth())
         );
 
-        return timeRecordRepository.save(approved);
+        TimeSheet timeSheet = timeSheetRepository.findByEmployeeIdAndReferenceMonthAndReferenceYear(employee.getId(), month, year)
+                .orElseGet(() -> {
+                    TimeSheet ts = new TimeSheet();
+                    ts.setEmployee(employee);
+                    ts.setReferenceYear(year);
+                    ts.setReferenceMonth(month);
+                    ts.setStatus(TimeSheet.TimeSheetStatus.OPEN);
+                    return timeSheetRepository.save(ts);
+                });
+
+        // Calculate totals
+        BigDecimal workedHours = BigDecimal.ZERO;
+        BigDecimal overtimeHours = BigDecimal.ZERO;
+        BigDecimal nightHours = BigDecimal.ZERO;
+        BigDecimal absenceHours = BigDecimal.ZERO;
+        int lateMinutes = 0;
+        int earlyMinutes = 0;
+        int daysWorked = 0;
+        int daysAbsent = 0;
+
+        // Group by date and calculate daily totals
+        Map<LocalDate, List<TimeRecord>> recordsByDate = records.stream()
+                .collect(Collectors.groupingBy(TimeRecord::getRecordDate));
+
+        for (Map.Entry<LocalDate, List<TimeRecord>> entry : recordsByDate.entrySet()) {
+            LocalDate date = entry.getKey();
+            List<TimeRecord> dayRecords = entry.getValue();
+
+            if (isHoliday(date, employee)) continue;
+
+            TimeRecord entryRecord = dayRecords.stream()
+                    .filter(r -> r.getRecordType() == TimeRecordType.ENTRY)
+                    .findFirst().orElse(null);
+            TimeRecord exitRecord = dayRecords.stream()
+                    .filter(r -> r.getRecordType() == TimeRecordType.EXIT)
+                    .findFirst().orElse(null);
+
+            if (entryRecord != null && exitRecord != null) {
+                daysWorked++;
+                long minutes = java.time.Duration.between(entryRecord.getRecordTime(), exitRecord.getRecordTime()).toMinutes();
+                workedHours = workedHours.add(BigDecimal.valueOf(minutes / 60.0));
+
+                // Check late arrival
+                EmploymentContract contract = contractRepository.findByEmployeeId(employee.getId()).orElse(null);
+                if (contract != null) {
+                    LocalTime expectedEntry = LocalTime.of(8, 0); // Would come from contract/work schedule
+                    if (entryRecord.getRecordTime().isAfter(expectedEntry.plusMinutes(TOLERANCE_MINUTES))) {
+                        lateMinutes += (int) java.time.Duration.between(expectedEntry.plusMinutes(TOLERANCE_MINUTES), entryRecord.getRecordTime()).toMinutes();
+                    }
+                }
+            } else if (dayRecords.stream().anyMatch(r -> r.getRecordType().isAbsenceRecord())) {
+                daysAbsent++;
+                absenceHours = absenceHours.add(BigDecimal.valueOf(8)); // Standard 8 hours
+            }
+        }
+
+        timeSheet.setTotalWorkedHours(workedHours.setScale(2, BigDecimal.ROUND_HALF_UP));
+        timeSheet.setTotalOvertimeHours(overtimeHours.setScale(2, BigDecimal.ROUND_HALF_UP));
+        timeSheet.setTotalNightHours(nightHours.setScale(2, BigDecimal.ROUND_HALF_UP));
+        timeSheet.setTotalAbsenceHours(absenceHours.setScale(2, BigDecimal.ROUND_HALF_UP));
+        timeSheet.setTotalLateMinutes(lateMinutes);
+        timeSheet.setTotalEarlyDepartureMinutes(earlyMinutes);
+        timeSheet.setDaysWorked(daysWorked);
+        timeSheet.setDaysAbsent(daysAbsent);
+        timeSheetRepository.save(timeSheet);
+    }
+
+    private boolean isHoliday(LocalDate date, Employee employee) {
+        // Check national holidays
+        List<Holiday> holidays = holidayRepository.findByDate(date);
+        for (Holiday holiday : holidays) {
+            if (holiday.appliesToCompany(employee.getCompanyId())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

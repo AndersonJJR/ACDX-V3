@@ -1,28 +1,41 @@
 package com.erp.brazil.hr.domain.repository;
 
 import com.erp.brazil.hr.domain.model.WebhookDelivery;
+import com.erp.brazil.hr.domain.model.WebhookDeliveryStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery, Long> {
-    Optional<WebhookDelivery> findByUuid(UUID uuid);
+
     List<WebhookDelivery> findBySubscriptionId(Long subscriptionId);
-    List<WebhookDelivery> findBySubscriptionIdAndStatus(Long subscriptionId, WebhookDelivery.DeliveryStatus status);
-    List<WebhookDelivery> findByStatus(WebhookDelivery.DeliveryStatus status);
-    List<WebhookDelivery> findByStatusAndNextRetryAtBefore(WebhookDelivery.DeliveryStatus status, Instant now);
-    List<WebhookDelivery> findByEventType(String eventType);
-    long countBySubscriptionIdAndStatus(Long subscriptionId, WebhookDelivery.DeliveryStatus status);
 
-    @Query("SELECT w FROM WebhookDelivery w WHERE w.subscriptionId = :subscriptionId ORDER BY w.attempt DESC")
-    List<WebhookDelivery> findBySubscriptionIdOrderByAttemptDesc(@Param("subscriptionId") Long subscriptionId);
+    Page<WebhookDelivery> findBySubscriptionId(Long subscriptionId, Pageable pageable);
 
-    @Query("SELECT w FROM WebhookDelivery w WHERE w.status = :status AND w.nextRetryAt IS NOT NULL AND w.nextRetryAt <= :now")
-    List<WebhookDelivery> findRetryableDeliveries(@Param("status") WebhookDelivery.DeliveryStatus status, @Param("now") Instant now);
+    List<WebhookDelivery> findBySubscriptionIdAndStatus(Long subscriptionId, WebhookDeliveryStatus status);
+
+    List<WebhookDelivery> findByStatus(WebhookDeliveryStatus status);
+
+    Page<WebhookDelivery> findByStatus(WebhookDeliveryStatus status, Pageable pageable);
+
+    @Query("SELECT wd FROM WebhookDelivery wd WHERE wd.status = :status AND wd.nextRetryAt IS NOT NULL AND wd.nextRetryAt <= :now")
+    List<WebhookDelivery> findReadyForRetry(@Param("status") WebhookDeliveryStatus status,
+                                             @Param("now") Instant now);
+
+    @Query("SELECT wd FROM WebhookDelivery wd WHERE wd.subscriptionId = :subscriptionId AND wd.status IN :statuses")
+    List<WebhookDelivery> findBySubscriptionIdAndStatusIn(@Param("subscriptionId") Long subscriptionId,
+                                                           @Param("statuses") List<WebhookDeliveryStatus> statuses);
+
+    long countBySubscriptionIdAndStatus(Long subscriptionId, WebhookDeliveryStatus status);
+
+    void deleteBySubscriptionId(Long subscriptionId);
+
+    void deleteByStatusAndCreatedAtBefore(WebhookDeliveryStatus status, Instant before);
 }

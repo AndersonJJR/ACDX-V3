@@ -1,16 +1,15 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "department",
-    uniqueConstraints = @UniqueConstraint(name = "uk_department_company_code", columnNames = {"company_id", "code"}))
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_department_uuid", columnNames = "uuid"),
+        @UniqueConstraint(name = "uk_department_company_code", columnNames = {"company_id", "code"})
+    })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,8 +18,9 @@ import java.util.List;
 public class Department extends BaseEntity {
 
     @NotNull
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @NotBlank
     @Size(max = 20)
@@ -40,40 +40,14 @@ public class Department extends BaseEntity {
     @JoinColumn(name = "parent_id")
     private Department parent;
 
-    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<Department> children = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cost_center_id")
+    private CostCenter costCenter;
 
-    @Column(name = "cost_center_id")
-    private Long costCenterId;
-
-    @Column(name = "manager_id")
-    private Long managerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    private Employee manager;
 
     @Column(name = "is_active")
-    private Boolean isActive = true;
-
-    public String getFullPath() {
-        if (parent == null) {
-            return name;
-        }
-        return parent.getFullPath() + " > " + name;
-    }
-
-    public boolean isRoot() {
-        return parent == null;
-    }
-
-    public List<Department> getAllChildren() {
-        List<Department> all = new ArrayList<>();
-        collectChildren(this, all);
-        return all;
-    }
-
-    private void collectChildren(Department dept, List<Department> all) {
-        for (Department child : dept.getChildren()) {
-            all.add(child);
-            collectChildren(child, all);
-        }
-    }
+    private boolean isActive = true;
 }

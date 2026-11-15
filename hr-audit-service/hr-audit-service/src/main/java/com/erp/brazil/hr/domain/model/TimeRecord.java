@@ -1,16 +1,18 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.math.BigDecimal;
 
 @Entity
 @Table(name = "time_record",
-    uniqueConstraints = @UniqueConstraint(name = "uk_time_record_employee_date_type", columnNames = {"employee_id", "record_date", "record_type"}),
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_time_record_uuid", columnNames = "uuid"),
+        @UniqueConstraint(name = "uk_time_record_employee_date_type", columnNames = {"employee_id", "record_date", "record_type"})
+    },
     indexes = {
         @Index(name = "idx_time_record_employee_date", columnList = "employee_id,record_date"),
         @Index(name = "idx_time_record_status", columnList = "status"),
@@ -34,7 +36,7 @@ public class TimeRecord extends BaseEntity {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "record_type", nullable = false, length = 30)
+    @Column(name = "record_type", nullable = false, length = 20)
     private TimeRecordType recordType;
 
     @NotNull
@@ -43,14 +45,14 @@ public class TimeRecord extends BaseEntity {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "record_source", nullable = false, length = 30)
+    @Column(name = "record_source", nullable = false, length = 20)
     private TimeRecordSource recordSource;
 
     @Column(name = "latitude", precision = 10, scale = 8)
-    private BigDecimal latitude;
+    private Double latitude;
 
     @Column(name = "longitude", precision = 11, scale = 8)
-    private BigDecimal longitude;
+    private Double longitude;
 
     @Size(max = 100)
     @Column(name = "device_id", length = 100)
@@ -61,14 +63,15 @@ public class TimeRecord extends BaseEntity {
     private String ipAddress;
 
     @Column(name = "is_manual_adjustment")
-    private Boolean isManualAdjustment = false;
+    private boolean isManualAdjustment = false;
 
     @Size(max = 500)
     @Column(name = "adjustment_reason", length = 500)
     private String adjustmentReason;
 
-    @Column(name = "adjusted_by")
-    private Long adjustedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "adjusted_by")
+    private Employee adjustedBy;
 
     @Column(name = "adjusted_at")
     private java.time.Instant adjustedAt;
@@ -78,33 +81,22 @@ public class TimeRecord extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private TimeRecordStatus status = TimeRecordStatus.PENDING;
 
-    @Column(name = "approved_by")
-    private Long approvedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private Employee approvedBy;
 
     @Column(name = "approved_at")
     private java.time.Instant approvedAt;
 
-    public boolean isWorkRecord() {
-        return recordType.isWorkRecord();
+    public boolean isEntry() {
+        return recordType == TimeRecordType.ENTRY || recordType == TimeRecordType.RETURN_LUNCH || recordType == TimeRecordType.OVERTIME_ENTRY;
     }
 
-    public boolean isOvertimeRecord() {
-        return recordType.isOvertimeRecord();
+    public boolean isExit() {
+        return recordType == TimeRecordType.EXIT_LUNCH || recordType == TimeRecordType.EXIT || recordType == TimeRecordType.OVERTIME_EXIT;
     }
 
-    public boolean isAbsenceRecord() {
-        return recordType.isAbsenceRecord();
-    }
-
-    public boolean isAutomatic() {
-        return recordSource.isAutomatic();
-    }
-
-    public boolean isPending() {
-        return status == TimeRecordStatus.PENDING;
-    }
-
-    public boolean isApproved() {
-        return status == TimeRecordStatus.APPROVED;
+    public void setIsManualAdjustment(boolean isManualAdjustment) {
+        this.isManualAdjustment = isManualAdjustment;
     }
 }

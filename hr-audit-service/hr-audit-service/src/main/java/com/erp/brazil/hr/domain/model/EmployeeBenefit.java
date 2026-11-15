@@ -1,8 +1,7 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -10,8 +9,11 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "employee_benefit",
-    indexes = @Index(name = "idx_employee_benefit_employee", columnList = "employee_id"),
-    uniqueConstraints = @UniqueConstraint(name = "uk_employee_benefit_uuid", columnNames = "uuid"))
+    uniqueConstraints = @UniqueConstraint(name = "uk_employee_benefit_uuid", columnNames = "uuid"),
+    indexes = {
+        @Index(name = "idx_employee_benefit_employee", columnList = "employee_id"),
+        @Index(name = "idx_employee_benefit_dates", columnList = "start_date,end_date")
+    })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,10 +36,12 @@ public class EmployeeBenefit extends BaseEntity {
     private Dependent dependent;
 
     @NotNull
+    @DecimalMin("0.00")
     @Column(name = "employee_value", nullable = false, precision = 10, scale = 2)
     private BigDecimal employeeValue = BigDecimal.ZERO;
 
     @NotNull
+    @DecimalMin("0.00")
     @Column(name = "employer_value", nullable = false, precision = 10, scale = 2)
     private BigDecimal employerValue = BigDecimal.ZERO;
 
@@ -48,21 +52,16 @@ public class EmployeeBenefit extends BaseEntity {
     @Column(name = "end_date")
     private LocalDate endDate;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20)
-    private EmployeeBenefitStatus status = EmployeeBenefitStatus.ACTIVE;
+    @Column(name = "status", nullable = false, length = 20)
+    private Status status = Status.ACTIVE;
 
     @Size(max = 500)
     @Column(name = "observations", length = 500)
     private String observations;
 
-    public boolean isActiveOn(LocalDate date) {
-        return status == EmployeeBenefitStatus.ACTIVE &&
-               !startDate.isAfter(date) &&
-               (endDate == null || !endDate.isBefore(date));
-    }
-
-    public BigDecimal getTotalValue() {
-        return employeeValue.add(employerValue);
+    public enum Status {
+        ACTIVE, SUSPENDED, CANCELLED, EXPIRED
     }
 }

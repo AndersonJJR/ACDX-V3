@@ -1,17 +1,15 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
-import org.hibernate.annotations.Type;
-
+import java.time.Instant;
 import java.util.Map;
 
 @Entity
 @Table(name = "notification",
+    uniqueConstraints = @UniqueConstraint(name = "uk_notification_uuid", columnNames = "uuid"),
     indexes = {
         @Index(name = "idx_notification_recipient", columnList = "recipient_type,recipient_id"),
         @Index(name = "idx_notification_status", columnList = "status"),
@@ -25,8 +23,9 @@ import java.util.Map;
 @Builder
 public class Notification extends BaseEntity {
 
-    @Column(name = "company_id")
-    private Long companyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "template_id")
@@ -34,7 +33,7 @@ public class Notification extends BaseEntity {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "recipient_type", nullable = false, length = 30)
+    @Column(name = "recipient_type", nullable = false, length = 20)
     private RecipientType recipientType;
 
     @Column(name = "recipient_id")
@@ -50,7 +49,7 @@ public class Notification extends BaseEntity {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "channel", nullable = false, length = 20)
+    @Column(name = "channel", nullable = false, length = 10)
     private NotificationChannel channel;
 
     @Size(max = 255)
@@ -72,71 +71,82 @@ public class Notification extends BaseEntity {
     private NotificationStatus status = NotificationStatus.QUEUED;
 
     @Column(name = "scheduled_at")
-    private java.time.Instant scheduledAt;
+    private Instant scheduledAt;
 
     @Column(name = "sent_at")
-    private java.time.Instant sentAt;
+    private Instant sentAt;
 
     @Column(name = "delivered_at")
-    private java.time.Instant deliveredAt;
+    private Instant deliveredAt;
 
     @Column(name = "read_at")
-    private java.time.Instant readAt;
+    private Instant readAt;
 
     @Column(name = "failed_at")
-    private java.time.Instant failedAt;
+    private Instant failedAt;
 
     @Size(max = 500)
     @Column(name = "failure_reason", length = 500)
     private String failureReason;
 
     @Column(name = "retry_count")
-    private Integer retryCount = 0;
+    private int retryCount = 0;
 
     @Column(name = "max_retries")
-    private Integer maxRetries = 3;
+    private int maxRetries = 3;
 
     @Size(max = 100)
     @Column(name = "external_id", length = 100)
     private String externalId;
 
-    @Type(JsonBinaryType.class)
-    @Column(name = "metadata", columnDefinition = "jsonb")
-    private Map<String, Object> metadata;
+    @ElementCollection
+    @CollectionTable(name = "notification_metadata", joinColumns = @JoinColumn(name = "notification_id"))
+    @MapKeyColumn(name = "meta_key")
+    @Column(name = "meta_value")
+    @Builder.Default
+    private Map<String, Object> metadata = new java.util.HashMap<>();
 
-    public enum RecipientType {
-        EMPLOYEE, MANAGER, HR, ADMIN, EXTERNAL, ALL_EMPLOYEES, DEPARTMENT
+    // Business methods
+    public boolean isPending() {
+        return status == NotificationStatus.QUEUED || status == NotificationStatus.SENDING;
+    }
+
+    public boolean isTerminal() {
+        return status == NotificationStatus.DELIVERED || status == NotificationStatus.READ || status == NotificationStatus.FAILED || status == NotificationStatus.CANCELLED;
     }
 
     public boolean canRetry() {
         return status == NotificationStatus.FAILED && retryCount < maxRetries;
     }
 
-    public void incrementRetry() {
-        this.retryCount++;
-        this.status = NotificationStatus.QUEUED;
-        this.failureReason = null;
-    }
-
     public void markSent(String externalId) {
         this.status = NotificationStatus.SENT;
-        this.sentAt = java.time.Instant.now();
+        this.sentAt = Instant.now();
         this.externalId = externalId;
     }
 
     public void markDelivered() {
         this.status = NotificationStatus.DELIVERED;
-        this.deliveredAt = java.time.Instant.now();
+        this.deliveredAt = Instant.now();
     }
 
     public void markRead() {
         this.status = NotificationStatus.READ;
-        this.readAt = java.time.Instant.now();
+        this.readAt = Instant.now();
+    }
+
+    public void incrementRetry() {
+        this.retryCount++;
+        this.status = NotificationStatus.QUEUED;
     }
 
     public void markFailed(String reason) {
         this.status = NotificationStatus.FAILED;
-        this.failedAt = java.time.Instant.now();
+        this.failedAt = Instant.now();
         this.failureReason = reason;
+    }
+
+    public enum RecipientType {
+        EMPLOYEE, MANAGER, HR, ADMIN, EXTERNAL, ALL_EMPLOYEES, DEPARTMENT
     }
 }

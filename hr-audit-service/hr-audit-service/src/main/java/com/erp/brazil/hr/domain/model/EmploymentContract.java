@@ -1,18 +1,15 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Entity
 @Table(name = "employment_contract",
-    uniqueConstraints = @UniqueConstraint(name = "uk_employment_contract_uuid", columnNames = "uuid"),
+    uniqueConstraints = @UniqueConstraint(name = "uk_contract_uuid", columnNames = "uuid"),
     indexes = {
         @Index(name = "idx_contract_employee", columnList = "employee_id"),
         @Index(name = "idx_contract_dates", columnList = "contract_start_date,contract_end_date")
@@ -25,8 +22,8 @@ import java.util.UUID;
 public class EmploymentContract extends BaseEntity {
 
     @NotNull
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
     @NotNull
@@ -40,17 +37,17 @@ public class EmploymentContract extends BaseEntity {
     private WorkJourney workJourney;
 
     @NotNull
-    @DecimalMin(value = "0.01", message = "Weekly hours must be positive")
+    @DecimalMin("0.01")
     @Column(name = "weekly_hours", nullable = false, precision = 4, scale = 2)
-    private BigDecimal weeklyHours = BigDecimal.valueOf(44.00);
+    private BigDecimal weeklyHours = new BigDecimal("44.00");
 
     @NotNull
-    @DecimalMin(value = "0.01", message = "Daily hours must be positive")
+    @DecimalMin("0.01")
     @Column(name = "daily_hours", nullable = false, precision = 4, scale = 2)
-    private BigDecimal dailyHours = BigDecimal.valueOf(8.00);
+    private BigDecimal dailyHours = new BigDecimal("8.00");
 
     @NotNull
-    @Positive
+    @DecimalMin("0.01")
     @Column(name = "salary_base", nullable = false, precision = 12, scale = 2)
     private BigDecimal salaryBase;
 
@@ -58,6 +55,7 @@ public class EmploymentContract extends BaseEntity {
     private BigDecimal salaryHourly;
 
     @NotBlank
+    @Size(max = 150)
     @Column(name = "position_title", nullable = false, length = 150)
     private String positionTitle;
 
@@ -65,14 +63,17 @@ public class EmploymentContract extends BaseEntity {
     @Column(name = "position_cbo", length = 10)
     private String positionCbo;
 
-    @Column(name = "department_id")
-    private Long departmentId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
 
-    @Column(name = "cost_center_id")
-    private Long costCenterId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cost_center_id")
+    private CostCenter costCenter;
 
-    @Column(name = "reporting_to_id")
-    private Long reportingToId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reporting_to_id")
+    private Employee reportingTo;
 
     @NotNull
     @Enumerated(EnumType.STRING)
@@ -87,11 +88,13 @@ public class EmploymentContract extends BaseEntity {
     @Column(name = "work_state", length = 2)
     private String workState;
 
-    @Column(name = "union_id")
-    private Long unionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "union_id")
+    private Union union;
 
-    @Column(name = "collective_agreement_id")
-    private Long collectiveAgreementId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "collective_agreement_id")
+    private CollectiveAgreement collectiveAgreement;
 
     @Column(name = "probation_end_date")
     private LocalDate probationEndDate;
@@ -104,64 +107,80 @@ public class EmploymentContract extends BaseEntity {
     private LocalDate contractEndDate;
 
     @Column(name = "renewal_count")
-    private Integer renewalCount = 0;
+    private int renewalCount = 0;
 
     @Column(name = "fgts_opt_in")
-    private Boolean fgtsOptIn = true;
+    private boolean fgtsOptIn = true;
 
     @Size(max = 30)
     @Column(name = "fgts_account", length = 30)
     private String fgtsAccount;
 
     @Column(name = "benefit_transport_voucher")
-    private Boolean benefitTransportVoucher = true;
+    private boolean benefitTransportVoucher = true;
 
     @Column(name = "benefit_meal_voucher")
-    private Boolean benefitMealVoucher = true;
+    private boolean benefitMealVoucher = true;
 
     @Column(name = "benefit_health_insurance")
-    private Boolean benefitHealthInsurance = false;
+    private boolean benefitHealthInsurance = false;
 
     @Column(name = "benefit_dental_insurance")
-    private Boolean benefitDentalInsurance = false;
+    private boolean benefitDentalInsurance = false;
 
     @Column(name = "benefit_life_insurance")
-    private Boolean benefitLifeInsurance = false;
+    private boolean benefitLifeInsurance = false;
 
-    public boolean isActive() {
-        LocalDate today = LocalDate.now();
-        return contractStartDate != null &&
-               !contractStartDate.isAfter(today) &&
-               (contractEndDate == null || !contractEndDate.isBefore(today));
-    }
-
-    public boolean isOnProbation() {
-        return probationEndDate != null && !probationEndDate.isBefore(LocalDate.now());
-    }
-
-    public boolean hasFgts() {
-        return fgtsOptIn && contractType.hasFgts();
-    }
-
-    public boolean hasNoticePeriod() {
-        return contractType.hasNoticePeriod();
-    }
-
-    public int getNoticePeriodDays() {
-        if (!hasNoticePeriod()) return 0;
-        int tenureYears = java.time.Period.between(contractStartDate, LocalDate.now()).getYears();
-        if (tenureYears <= 1) return 30;
-        return 30 + (tenureYears - 1) * 3; // 3 days per year after first, max 90
+    public boolean isActive(LocalDate referenceDate) {
+        return !referenceDate.isBefore(contractStartDate) &&
+               (contractEndDate == null || !referenceDate.isAfter(contractEndDate));
     }
 
     public BigDecimal calculateHourlyRate() {
-        if (salaryBase == null || weeklyHours == null || weeklyHours.compareTo(BigDecimal.ZERO) == 0) {
+        if (weeklyHours == null || weeklyHours.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
-        // Monthly hours = weekly_hours * 52 / 12 = weekly_hours * 4.333
-        // Or standard 220 hours for 44h/week
-        BigDecimal monthlyHours = weeklyHours.multiply(BigDecimal.valueOf(52))
-            .divide(BigDecimal.valueOf(12), 4, BigDecimal.ROUND_HALF_UP);
-        return salaryBase.divide(monthlyHours, 4, BigDecimal.ROUND_HALF_UP);
+        return salaryBase.divide(
+            weeklyHours.multiply(new BigDecimal("52")).divide(new BigDecimal("12")).divide(new BigDecimal("220"), 4, BigDecimal.ROUND_HALF_UP),
+            4, BigDecimal.ROUND_HALF_UP
+        );
+    }
+
+    public enum ContractType {
+        CLT_INDEFINITE("CLT Indeterminado"),
+        CLT_FIXED_TERM("CLT Determinado"),
+        CLT_TEMPORARY("CLT Temporário"),
+        APPRENTICE("Aprendiz"),
+        INTERNSHIP("Estágio"),
+        STATUTORY("Estatutário"),
+        COOPERATIVE("Cooperado");
+
+        private final String description;
+        ContractType(String description) { this.description = description; }
+        public String getDescription() { return description; }
+    }
+
+    public enum WorkJourney {
+        FULL_TIME("Integral"),
+        PART_TIME_MORNING("Meio Período Manhã"),
+        PART_TIME_AFTERNOON("Meio Período Tarde"),
+        PART_TIME_NIGHT("Meio Período Noite"),
+        SHIFT_12X36("Escala 12x36"),
+        SHIFT_6X1("Escala 6x1"),
+        CUSTOM("Personalizada");
+
+        private final String description;
+        WorkJourney(String description) { this.description = description; }
+        public String getDescription() { return description; }
+    }
+
+    public enum WorkLocation {
+        ONSITE("Presencial"),
+        REMOTE("Remoto"),
+        HYBRID("Híbrido");
+
+        private final String description;
+        WorkLocation(String description) { this.description = description; }
+        public String getDescription() { return description; }
     }
 }

@@ -1,14 +1,14 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "holiday",
+    uniqueConstraints = @UniqueConstraint(name = "uk_holiday_uuid", columnNames = "uuid"),
     indexes = {
         @Index(name = "idx_holiday_date", columnList = "date"),
         @Index(name = "idx_holiday_company", columnList = "company_id")
@@ -20,8 +20,9 @@ import java.time.LocalDate;
 @Builder
 public class Holiday extends BaseEntity {
 
-    @Column(name = "company_id")
-    private Long companyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
 
     @NotBlank
     @Size(max = 255)
@@ -35,10 +36,10 @@ public class Holiday extends BaseEntity {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)
-    private HolidayType type;
+    private Type type;
 
     @Column(name = "is_recurring")
-    private Boolean isRecurring = false;
+    private boolean isRecurring = false;
 
     @Size(max = 5)
     @Column(name = "month_day", length = 5)
@@ -53,25 +54,22 @@ public class Holiday extends BaseEntity {
     private String city;
 
     @Column(name = "is_working_day")
-    private Boolean isWorkingDay = false;
-
-    public boolean isNational() {
-        return type == HolidayType.NATIONAL;
-    }
+    private boolean isWorkingDay = false;
 
     public boolean appliesToCompany(Long companyId) {
-        if (this.companyId == null) return true; // National holiday
-        return this.companyId.equals(companyId);
+        if (companyId == null) return false;
+        // National holidays apply to all
+        if (type == Type.NATIONAL) return true;
+        // Company-specific holidays
+        if (type == Type.COMPANY && company != null && company.getId().equals(companyId)) return true;
+        // State holidays
+        if (type == Type.STATE && company != null && companyId.equals(company.getId())) return true;
+        // Municipal holidays
+        if (type == Type.MUNICIPAL && company != null && companyId.equals(company.getId())) return true;
+        return false;
     }
 
-    public boolean appliesToLocation(Long companyId, String state, String city) {
-        if (!appliesToCompany(companyId)) return false;
-        if (type == HolidayType.STATE && this.state != null) {
-            return this.state.equals(state);
-        }
-        if (type == HolidayType.MUNICIPAL && this.city != null) {
-            return this.city.equals(city);
-        }
-        return true;
+    public enum Type {
+        NATIONAL, STATE, MUNICIPAL, COMPANY, RELIGIOUS, OPTIONAL
     }
 }

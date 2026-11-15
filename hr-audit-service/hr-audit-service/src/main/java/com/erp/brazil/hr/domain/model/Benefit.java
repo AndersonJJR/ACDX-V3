@@ -1,8 +1,7 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -10,7 +9,10 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "benefit",
-    uniqueConstraints = @UniqueConstraint(name = "uk_benefit_company_code", columnNames = {"company_id", "code"}))
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_benefit_uuid", columnNames = "uuid"),
+        @UniqueConstraint(name = "uk_benefit_company_code", columnNames = {"company_id", "code"})
+    })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,8 +21,9 @@ import java.time.LocalDate;
 public class Benefit extends BaseEntity {
 
     @NotNull
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @NotBlank
     @Size(max = 20)
@@ -70,13 +73,13 @@ public class Benefit extends BaseEntity {
     private BigDecimal maxEmployerValue;
 
     @Column(name = "is_mandatory")
-    private Boolean isMandatory = false;
+    private boolean isMandatory = false;
 
     @Column(name = "is_taxable")
-    private Boolean isTaxable = false;
+    private boolean isTaxable = false;
 
     @Column(name = "requires_dependent")
-    private Boolean requiresDependent = false;
+    private boolean requiresDependent = false;
 
     @NotNull
     @Column(name = "start_date", nullable = false)
@@ -86,29 +89,37 @@ public class Benefit extends BaseEntity {
     private LocalDate endDate;
 
     @Column(name = "is_active")
-    private Boolean isActive = true;
+    private boolean isActive = true;
 
     public boolean isActiveOn(LocalDate date) {
-        return isActive &&
-               !startDate.isAfter(date) &&
-               (endDate == null || !endDate.isBefore(date));
+        return isActive && !date.isBefore(startDate) && (endDate == null || !date.isAfter(endDate));
     }
 
-    public BigDecimal calculateEmployeeValue(BigDecimal baseValue) {
-        if (baseValue == null) return BigDecimal.ZERO;
-        BigDecimal value = baseValue.multiply(employeeContributionPct).divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-        if (maxEmployeeValue != null && value.compareTo(maxEmployeeValue) > 0) {
+    public BigDecimal calculateEmployeeContribution(BigDecimal baseValue) {
+        if (employeeContributionPct == null || employeeContributionPct.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal contribution = baseValue.multiply(employeeContributionPct).divide(new BigDecimal("100"), 2, BigDecimal.ROUND_HALF_UP);
+        if (maxEmployeeValue != null && contribution.compareTo(maxEmployeeValue) > 0) {
             return maxEmployeeValue;
         }
-        return value;
+        return contribution;
     }
 
-    public BigDecimal calculateEmployerValue(BigDecimal baseValue) {
-        if (baseValue == null) return BigDecimal.ZERO;
-        BigDecimal value = baseValue.multiply(employerContributionPct).divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-        if (maxEmployerValue != null && value.compareTo(maxEmployerValue) > 0) {
+    public BigDecimal calculateEmployerContribution(BigDecimal baseValue) {
+        if (employerContributionPct == null || employerContributionPct.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal contribution = baseValue.multiply(employerContributionPct).divide(new BigDecimal("100"), 2, BigDecimal.ROUND_HALF_UP);
+        if (maxEmployerValue != null && contribution.compareTo(maxEmployerValue) > 0) {
             return maxEmployerValue;
         }
-        return value;
+        return contribution;
+    }
+
+    public enum BenefitType {
+        TRANSPORT_VOUCHER, MEAL_VOUCHER, FOOD_VOUCHER, HEALTH_INSURANCE,
+        DENTAL_INSURANCE, LIFE_INSURANCE, PENSION, GYM, EDUCATION,
+        CHILDCARE, FUEL, PHARMACY, OPTICAL, OTHER
     }
 }

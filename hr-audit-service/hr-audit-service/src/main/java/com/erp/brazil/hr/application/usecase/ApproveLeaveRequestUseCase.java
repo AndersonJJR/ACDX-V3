@@ -2,166 +2,229 @@ package com.erp.brazil.hr.application.usecase;
 
 import com.erp.brazil.hr.domain.model.*;
 import com.erp.brazil.hr.domain.repository.*;
-import org.springframework.stereotype.Component;
+import com.erp.brazil.hr.domain.event.LeaveApprovedEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
-@Component
+@Service
+@RequiredArgsConstructor
+@Slf4j
 public class ApproveLeaveRequestUseCase {
 
     private final LeaveRequestRepository leaveRequestRepository;
     private final LeaveBalanceRepository leaveBalanceRepository;
+    private final LeaveTypeRepository leaveTypeRepository;
     private final EmployeeRepository employeeRepository;
-    private final AuditEventUseCase auditEventUseCase;
-
-    public ApproveLeaveRequestUseCase(LeaveRequestRepository leaveRequestRepository,
-                                       LeaveBalanceRepository leaveBalanceRepository,
-                                       EmployeeRepository employeeRepository,
-                                       AuditEventUseCase auditEventUseCase) {
-        this.leaveRequestRepository = leaveRequestRepository;
-        this.leaveBalanceRepository = leaveBalanceRepository;
-        this.employeeRepository = employeeRepository;
-        this.auditEventUseCase = auditEventUseCase;
-    }
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public LeaveRequest approve(Long requestId, Long approvedBy, String notes) {
-        LeaveRequest request = leaveRequestRepository.findById(requestId)
-            .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
+    public LeaveRequest approve(Long leaveRequestId, Long approvedBy, String notes) {
+        LeaveRequest request = leaveRequestRepository.findById(leaveRequestId)
+            .orElseThrow(() -> new IllegalArgumentException("Leave request not found"));
 
-        if (!request.canApprove()) {
-            throw new IllegalStateException("Request cannot be approved, current status: " + request.status());
+        if (!request.canBeCancelled() && request.getStatus() != LeaveRequestStatus.PENDING) {
+            throw new IllegalStateException("Only pending requests can be approved");
         }
 
-        // Check for overlapping approved requests
-        List<LeaveRequest> overlapping = leaveRequestRepository.findOverlapping(
-            request.employeeId(), request.startDate(), request.endDate(),
-            List.of(LeaveRequest.LeaveStatus.APPROVED, LeaveRequest.LeaveStatus.PENDING), requestId);
+        LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
+            .orElseThrow(() -> new IllegalArgumentException("Leave type not found"));
 
-        if (!overlapping.isEmpty()) {
-            throw new IllegalStateException("Overlapping approved leave request exists");
+        if (leaveType.isPaidByDefault() && leaveType.requiresApproval) {
+            LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndLeaveTypeIdAndReferenceYear(
+                request.getEmployeeId(), leaveType.getId(), request.getStartDate().getYear())
+                .orElseThrow(() -> new IllegalStateException("Leave balance not found"));
+
+            if (!balance.hasSufficientBalance(request.getTotalDays())) {
+                throw new IllegalStateException("Insufficient leave balance");
+            }
+
+            balance.addUsedDays(request.getTotalDays());
+            balance.addPendingDays(request.getTotalDays().negate());
+            leaveBalanceRepository.save(balance);
         }
 
-        // Check and update balance
-        if (requiresBalanceDeduction(request)) {
-            deductFromBalance(request.employeeId(), request.leaveTypeId(), request.totalDays());
-        }
+        request.setStatus(LeaveRequestStatus.APPROVED);
+        request.setApprovedBy(approvedBy);
+        request.setApprovedAt(java.time.Instant.now());
+        request.setApprovalNotes(notes);
 
-        LeaveRequest approved = new LeaveRequest(
-            request.id(), request.uuid(), request.employeeId(), request.leaveTypeId(),
-            request.startDate(), request.endDate(), request.startTime(), request.endTime(),
-            request.totalDays(), request.totalHours(), request.reason(), request.attachmentUrl(),
-            LeaveRequest.LeaveStatus.APPROVED, request.requestedAt(), LocalDateTime.now(),
-            approvedBy, notes, null, null, null, null, null, null
-        );
+        LeaveRequest saved = leaveRequestRepository.save(request);
 
-        LeaveRequest saved = leaveRequestRepository.save(approved);
-        auditEventUseCase.logEvent("LEAVE_APPROVED", "LeaveRequest", saved.uuid().toString(),
-            getCompanyId(saved.employeeId()), approvedBy, saved);
+        Employee employee = employeeRepository.findById(request.getEmployeeId()).orElse(null);
+        eventPublisher.publishEvent(LeaveApprovedEvent.builder()
+            .leaveRequestId(saved.getId())
+            .employeeId(request.getEmployeeId())
+            .employeeName(employee != null ? employee.getFullName() : "")
+            .leaveTypeCode(leaveType.getCode())
+            .leaveTypeName(leaveType.getName())
+            .startDate(request.getStartDate())
+            .endDate(request.getEndDate())
+            .totalDays(request.getTotalDays())
+            .approvalNotes(notes)
+            .approvedBy(approvedBy)
+            .companyId(employee != null ? employee.getCompanyId() : null)
+            .build());
 
+        log.info("Leave request {} approved by {}", leaveRequestId, approvedBy);
         return saved;
     }
 
     @Transactional
-    public LeaveRequest reject(Long requestId, Long rejectedBy, String reason) {
-        LeaveRequest request = leaveRequestRepository.findById(requestId)
-            .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
+    public LeaveRequest reject(Long leaveRequestId, Long rejectedBy, String reason) {
+        LeaveRequest request = leaveRequestRepository.findById(leaveRequestId)
+            .orElseThrow(() -> new IllegalArgumentException("Leave request not found"));
 
-        if (!request.canApprove()) {
-            throw new IllegalStateException("Request cannot be rejected, current status: " + request.status());
+        if (request.getStatus() != LeaveRequestStatus.PENDING) {
+            throw new IllegalStateException("Only pending requests can be rejected");
         }
 
-        LeaveRequest rejected = new LeaveRequest(
-            request.id(), request.uuid(), request.employeeId(), request.leaveTypeId(),
-            request.startDate(), request.endDate(), request.startTime(), request.endTime(),
-            request.totalDays(), request.totalHours(), request.reason(), request.attachmentUrl(),
-            LeaveRequest.LeaveStatus.REJECTED, request.requestedAt(), null, null, null,
-            LocalDateTime.now(), rejectedBy, reason, null, null, null
-        );
+        if (request.getLeaveTypeId() != null) {
+            LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndLeaveTypeIdAndReferenceYear(
+                request.getEmployeeId(), request.getLeaveTypeId(), request.getStartDate().getYear())
+                .orElse(null);
 
-        LeaveRequest saved = leaveRequestRepository.save(rejected);
-        auditEventUseCase.logEvent("LEAVE_REJECTED", "LeaveRequest", saved.uuid().toString(),
-            getCompanyId(saved.employeeId()), rejectedBy, saved);
+            if (balance != null) {
+                balance.cancelPendingDays(request.getTotalDays());
+                leaveBalanceRepository.save(balance);
+            }
+        }
 
+        request.setStatus(LeaveRequestStatus.REJECTED);
+        request.setRejectedBy(rejectedBy);
+        request.setRejectedAt(java.time.Instant.now());
+        request.setRejectionReason(reason);
+
+        LeaveRequest saved = leaveRequestRepository.save(request);
+        log.info("Leave request {} rejected by {}", leaveRequestId, rejectedBy);
         return saved;
     }
 
     @Transactional
-    public LeaveRequest cancel(Long requestId, Long cancelledBy, String reason) {
-        LeaveRequest request = leaveRequestRepository.findById(requestId)
-            .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
+    public LeaveRequest cancel(Long leaveRequestId, Long cancelledBy, String reason) {
+        LeaveRequest request = leaveRequestRepository.findById(leaveRequestId)
+            .orElseThrow(() -> new IllegalArgumentException("Leave request not found"));
 
-        if (request.status() == LeaveRequest.LeaveStatus.CANCELLED) {
-            throw new IllegalStateException("Request already cancelled");
+        if (!request.canBeCancelled()) {
+            throw new IllegalStateException("Request cannot be cancelled in current status: " + request.getStatus());
         }
 
-        // Restore balance if was approved
-        if (request.status() == LeaveRequest.LeaveStatus.APPROVED && requiresBalanceDeduction(request)) {
-            restoreBalance(request.employeeId(), request.leaveTypeId(), request.totalDays());
+        if (request.getStatus() == LeaveRequestStatus.APPROVED && request.getLeaveTypeId() != null) {
+            LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndLeaveTypeIdAndReferenceYear(
+                request.getEmployeeId(), request.getLeaveTypeId(), request.getStartDate().getYear())
+                .orElse(null);
+
+            if (balance != null) {
+                balance.addUsedDays(request.getTotalDays().negate());
+                leaveBalanceRepository.save(balance);
+            }
+        } else if (request.getStatus() == LeaveRequestStatus.PENDING && request.getLeaveTypeId() != null) {
+            LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndLeaveTypeIdAndReferenceYear(
+                request.getEmployeeId(), request.getLeaveTypeId(), request.getStartDate().getYear())
+                .orElse(null);
+
+            if (balance != null) {
+                balance.cancelPendingDays(request.getTotalDays());
+                leaveBalanceRepository.save(balance);
+            }
         }
 
-        LeaveRequest cancelled = new LeaveRequest(
-            request.id(), request.uuid(), request.employeeId(), request.leaveTypeId(),
-            request.startDate(), request.endDate(), request.startTime(), request.endTime(),
-            request.totalDays(), request.totalHours(), request.reason(), request.attachmentUrl(),
-            LeaveRequest.LeaveStatus.CANCELLED, request.requestedAt(), request.approvedAt(),
-            request.approvedBy(), request.approvalNotes(), request.rejectedAt(),
-            request.rejectedBy(), request.rejectionReason(), LocalDateTime.now(), cancelledBy, reason
-        );
+        request.setStatus(LeaveRequestStatus.CANCELLED);
+        request.setCancelledBy(cancelledBy);
+        request.setCancelledAt(java.time.Instant.now());
+        request.setCancellationReason(reason);
 
-        LeaveRequest saved = leaveRequestRepository.save(cancelled);
-        auditEventUseCase.logEvent("LEAVE_CANCELLED", "LeaveRequest", saved.uuid().toString(),
-            getCompanyId(saved.employeeId()), cancelledBy, saved);
-
+        LeaveRequest saved = leaveRequestRepository.save(request);
+        log.info("Leave request {} cancelled by {}", leaveRequestId, cancelledBy);
         return saved;
     }
 
-    private boolean requiresBalanceDeduction(LeaveRequest request) {
-        // Vacation, sick leave, unpaid leave typically deduct from balance
-        return true; // Simplified - would check leave type configuration
-    }
+    @Transactional
+    public LeaveRequest requestLeave(Long employeeId, Long leaveTypeId, LocalDate startDate, LocalDate endDate,
+                                     String reason, String attachmentUrl) {
+        Employee employee = employeeRepository.findById(employeeId)
+            .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
 
-    private void deductFromBalance(Long employeeId, Long leaveTypeId, BigDecimal days) {
-        LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndLeaveTypeIdAndReferenceYear(
-            employeeId, leaveTypeId, LocalDate.now().getYear())
-            .orElseThrow(() -> new IllegalStateException("Leave balance not found"));
+        LeaveType leaveType = leaveTypeRepository.findById(leaveTypeId)
+            .orElseThrow(() -> new IllegalArgumentException("Leave type not found"));
 
-        if (!balance.hasAvailableDays(days)) {
-            throw new IllegalStateException("Insufficient leave balance");
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("Start date must be before end date");
         }
 
-        LeaveBalance updated = new LeaveBalance(
-            balance.id(), balance.uuid(), balance.employeeId(), balance.leaveTypeId(),
-            balance.referenceYear(), balance.accruedDays(),
-            balance.usedDays().add(days), balance.pendingDays().subtract(days),
-            balance.carriedOverDays(), balance.expiredDays(), balance.lastAccrualDate()
-        );
+        if (startDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Cannot request leave for past dates");
+        }
 
-        leaveBalanceRepository.save(updated);
+        long days = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        BigDecimal totalDays = BigDecimal.valueOf(days);
+
+        if (leaveType.isPaidByDefault()) {
+            LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndLeaveTypeIdAndReferenceYear(
+                employeeId, leaveTypeId, startDate.getYear())
+                .orElseThrow(() -> new IllegalStateException("Leave balance not found for this year"));
+
+            if (!balance.hasSufficientBalance(totalDays)) {
+                throw new IllegalStateException("Insufficient leave balance. Available: " + balance.getAvailableDaysCalculated());
+            }
+
+            balance.addPendingDays(totalDays);
+            leaveBalanceRepository.save(balance);
+        }
+
+        LeaveRequest request = new LeaveRequest();
+        request.setEmployee(employee);
+        request.setLeaveType(leaveType);
+        request.setStartDate(startDate);
+        request.setEndDate(endDate);
+        request.setTotalDays(totalDays);
+        request.setReason(reason);
+        request.setAttachmentUrl(attachmentUrl);
+        request.setStatus(LeaveRequestStatus.PENDING);
+        request.setRequestedAt(java.time.Instant.now());
+
+        LeaveRequest saved = leaveRequestRepository.save(request);
+        log.info("Leave request created for employee {}: {} to {}", employeeId, startDate, endDate);
+        return saved;
     }
 
-    private void restoreBalance(Long employeeId, Long leaveTypeId, BigDecimal days) {
-        LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndLeaveTypeIdAndReferenceYear(
-            employeeId, leaveTypeId, LocalDate.now().getYear())
-            .orElseThrow(() -> new IllegalStateException("Leave balance not found"));
-
-        LeaveBalance updated = new LeaveBalance(
-            balance.id(), balance.uuid(), balance.employeeId(), balance.leaveTypeId(),
-            balance.referenceYear(), balance.accruedDays(),
-            balance.usedDays().subtract(days), balance.pendingDays(),
-            balance.carriedOverDays(), balance.expiredDays(), balance.lastAccrualDate()
-        );
-
-        leaveBalanceRepository.save(updated);
+    public List<LeaveRequest> getEmployeeRequests(Long employeeId) {
+        return leaveRequestRepository.findByEmployeeId(employeeId);
     }
 
-    private Long getCompanyId(Long employeeId) {
-        return employeeRepository.findById(employeeId)
-            .map(Employee::companyId)
-            .orElse(null);
+    @Transactional
+    public void accrueLeaveBalances(Long companyId, Integer year) {
+        List<Employee> employees = employeeRepository.findByCompanyIdAndStatusIn(companyId,
+            List.of(EmployeeStatus.ACTIVE, EmployeeStatus.ON_LEAVE));
+
+        for (Employee employee : employees) {
+            List<LeaveType> leaveTypes = leaveTypeRepository.findByCompanyIdAndIsActiveTrue(companyId);
+
+            for (LeaveType leaveType : leaveTypes) {
+                if (leaveType.getMaxDaysPerYear() != null) {
+                    LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndLeaveTypeIdAndReferenceYear(
+                        employee.getId(), leaveType.getId(), year)
+                        .orElseGet(() -> {
+                            LeaveBalance lb = new LeaveBalance();
+                            lb.setEmployee(employee);
+                            lb.setLeaveType(leaveType);
+                            lb.setReferenceYear(year);
+                            return lb;
+                        });
+
+                    BigDecimal monthlyAccrual = BigDecimal.valueOf(leaveType.getMaxDaysPerYear())
+                        .divide(BigDecimal.valueOf(12), 2, BigDecimal.ROUND_HALF_UP);
+                    balance.addAccruedDays(monthlyAccrual);
+                    leaveBalanceRepository.save(balance);
+                }
+            }
+        }
     }
 }

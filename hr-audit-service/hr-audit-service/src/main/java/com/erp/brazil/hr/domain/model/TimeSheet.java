@@ -1,18 +1,20 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 
 @Entity
 @Table(name = "time_sheet",
-    uniqueConstraints = @UniqueConstraint(name = "uk_time_sheet_employee_period", columnNames = {"employee_id", "reference_month", "reference_year"}),
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_time_sheet_uuid", columnNames = "uuid"),
+        @UniqueConstraint(name = "uk_time_sheet_employee_period", columnNames = {"employee_id", "reference_month", "reference_year"})
+    },
     indexes = {
         @Index(name = "idx_time_sheet_period", columnList = "reference_year,reference_month"),
         @Index(name = "idx_time_sheet_status", columnList = "status")
@@ -42,48 +44,45 @@ public class TimeSheet extends BaseEntity {
     private Integer referenceYear;
 
     @NotNull
+    @DecimalMin("0.00")
     @Column(name = "total_worked_hours", nullable = false, precision = 6, scale = 2)
     private BigDecimal totalWorkedHours = BigDecimal.ZERO;
 
     @NotNull
+    @DecimalMin("0.00")
     @Column(name = "total_overtime_hours", nullable = false, precision = 6, scale = 2)
     private BigDecimal totalOvertimeHours = BigDecimal.ZERO;
 
     @NotNull
+    @DecimalMin("0.00")
     @Column(name = "total_night_hours", nullable = false, precision = 6, scale = 2)
     private BigDecimal totalNightHours = BigDecimal.ZERO;
 
     @NotNull
+    @DecimalMin("0.00")
     @Column(name = "total_absence_hours", nullable = false, precision = 6, scale = 2)
     private BigDecimal totalAbsenceHours = BigDecimal.ZERO;
 
-    @NotNull
-    @Column(name = "total_late_minutes", nullable = false)
-    private Integer totalLateMinutes = 0;
+    @Column(name = "total_late_minutes")
+    private int totalLateMinutes = 0;
 
-    @NotNull
-    @Column(name = "total_early_departure_minutes", nullable = false)
-    private Integer totalEarlyDepartureMinutes = 0;
+    @Column(name = "total_early_departure_minutes")
+    private int totalEarlyDepartureMinutes = 0;
 
-    @NotNull
-    @Column(name = "days_worked", nullable = false)
-    private Integer daysWorked = 0;
+    @Column(name = "days_worked")
+    private int daysWorked = 0;
 
-    @NotNull
-    @Column(name = "days_absent", nullable = false)
-    private Integer daysAbsent = 0;
+    @Column(name = "days_absent")
+    private int daysAbsent = 0;
 
-    @NotNull
-    @Column(name = "days_holiday", nullable = false)
-    private Integer daysHoliday = 0;
+    @Column(name = "days_holiday")
+    private int daysHoliday = 0;
 
-    @NotNull
-    @Column(name = "days_vacation", nullable = false)
-    private Integer daysVacation = 0;
+    @Column(name = "days_vacation")
+    private int daysVacation = 0;
 
-    @NotNull
-    @Column(name = "days_medical_leave", nullable = false)
-    private Integer daysMedicalLeave = 0;
+    @Column(name = "days_medical_leave")
+    private int daysMedicalLeave = 0;
 
     @NotNull
     @Enumerated(EnumType.STRING)
@@ -91,43 +90,42 @@ public class TimeSheet extends BaseEntity {
     private TimeSheetStatus status = TimeSheetStatus.OPEN;
 
     @Column(name = "calculated_at")
-    private java.time.Instant calculatedAt;
+    private LocalDateTime calculatedAt;
 
-    @Column(name = "calculated_by")
-    private Long calculatedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "calculated_by")
+    private Employee calculatedBy;
 
     @Column(name = "approved_at")
-    private java.time.Instant approvedAt;
+    private LocalDateTime approvedAt;
 
-    @Column(name = "approved_by")
-    private Long approvedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private Employee approvedBy;
 
     @Column(name = "closed_at")
-    private java.time.Instant closedAt;
+    private LocalDateTime closedAt;
 
-    @Column(name = "closed_by")
-    private Long closedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "closed_by")
+    private Employee closedBy;
 
     @Column(name = "observations", columnDefinition = "TEXT")
     private String observations;
 
-    public YearMonth getReferencePeriod() {
-        return YearMonth.of(referenceYear, referenceMonth);
+    public LocalDate getPeriodStart() {
+        return LocalDate.of(referenceYear, referenceMonth, 1);
     }
 
-    public boolean isEditable() {
-        return status.isEditable();
+    public LocalDate getPeriodEnd() {
+        return getPeriodStart().withDayOfMonth(getPeriodStart().lengthOfMonth());
     }
 
-    public boolean isFinal() {
-        return status.isFinal();
+    public boolean isClosed() {
+        return status == TimeSheetStatus.CLOSED;
     }
 
-    public int getTotalDays() {
-        return daysWorked + daysAbsent + daysHoliday + daysVacation + daysMedicalLeave;
-    }
-
-    public BigDecimal getTotalHours() {
-        return totalWorkedHours.add(totalOvertimeHours).add(totalNightHours);
+    public enum TimeSheetStatus {
+        OPEN, CALCULATED, APPROVED, CLOSED, DISPUTED
     }
 }

@@ -1,17 +1,16 @@
 package com.erp.brazil.hr.domain.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
-import org.hibernate.annotations.Type;
-
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 @Entity
 @Table(name = "webhook_subscription",
+    uniqueConstraints = @UniqueConstraint(name = "uk_webhook_subscription_uuid", columnNames = "uuid"),
     indexes = {
         @Index(name = "idx_webhook_company", columnList = "company_id"),
         @Index(name = "idx_webhook_active", columnList = "is_active")
@@ -24,8 +23,9 @@ import java.util.Map;
 public class WebhookSubscription extends BaseEntity {
 
     @NotNull
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @NotBlank
     @Size(max = 100)
@@ -42,41 +42,83 @@ public class WebhookSubscription extends BaseEntity {
     @Column(name = "secret", nullable = false, length = 255)
     private String secret;
 
-    @Type(JsonBinaryType.class)
-    @Column(name = "events", columnDefinition = "jsonb", nullable = false)
-    private java.util.List<String> events;
+    @ElementCollection
+    @CollectionTable(name = "webhook_subscription_events", joinColumns = @JoinColumn(name = "subscription_id"))
+    @Column(name = "event")
+    @Builder.Default
+    private List<String> events = new java.util.ArrayList<>();
 
-    @Type(JsonBinaryType.class)
-    @Column(name = "headers", columnDefinition = "jsonb")
-    private Map<String, String> headers;
+    @ElementCollection
+    @CollectionTable(name = "webhook_subscription_headers", joinColumns = @JoinColumn(name = "subscription_id"))
+    @MapKeyColumn(name = "header_key")
+    @Column(name = "header_value")
+    @Builder.Default
+    private Map<String, String> headers = new java.util.HashMap<>();
 
     @Column(name = "is_active")
-    private Boolean isActive = true;
+    private boolean isActive = true;
 
-    @Type(JsonBinaryType.class)
-    @Column(name = "retry_policy", columnDefinition = "jsonb")
-    private Map<String, Object> retryPolicy;
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "maxRetries", column = @Column(name = "retry_max_retries")),
+        @AttributeOverride(name = "initialDelayMs", column = @Column(name = "retry_initial_delay_ms")),
+        @AttributeOverride(name = "backoffMultiplier", column = @Column(name = "retry_backoff_multiplier")),
+        @AttributeOverride(name = "maxDelayMs", column = @Column(name = "retry_max_delay_ms"))
+    })
+    private RetryPolicy retryPolicy = RetryPolicy.defaultPolicy();
 
     @Column(name = "last_triggered_at")
-    private java.time.Instant lastTriggeredAt;
+    private Instant lastTriggeredAt;
 
     @Column(name = "consecutive_failures")
-    private Integer consecutiveFailures = 0;
+    private int consecutiveFailures = 0;
 
-    public boolean isEventSubscribed(String event) {
-        return events != null && events.contains(event);
-    }
-
+    // Business methods
     public void recordSuccess() {
         this.consecutiveFailures = 0;
-        this.lastTriggeredAt = java.time.Instant.now();
+        this.lastTriggeredAt = Instant.now();
     }
 
     public void recordFailure() {
         this.consecutiveFailures++;
+        this.lastTriggeredAt = Instant.now();
     }
 
     public boolean shouldDisable() {
-        return consecutiveFailures >= 10; // Disable after 10 consecutive failures
+        return consecutiveFailures >= 5;
+    }
+
+    public boolean getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
+    }
+
+    @Embeddable
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class RetryPolicy {
+        private int maxRetries = 5;
+        private long initialDelayMs = 1000;
+        private double backoffMultiplier = 2.0;
+        private long maxDelayMs = 300000;
+
+        public static RetryPolicy defaultPolicy() {
+            return RetryPolicy.builder().build();
+        }
+
+        public long calculateDelay(int attempt) {
+            long delay = (long) (initialDelayMs * Math.pow(backoffMultiplier, attempt - 1));
+            return Math.min(delay, maxDelayMs);
+        }
+
+        public boolean shouldRetry(int attempt) {
+            return attempt <= maxRetries;
+        }
     }
 }
