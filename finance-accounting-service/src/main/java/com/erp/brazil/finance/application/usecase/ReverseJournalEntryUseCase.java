@@ -1,226 +1,164 @@
 package com.erp.brazil.finance.application.usecase;
 
-import com.erp.brazil.finance.application.dto.JournalEntryDTO;
-import com.erp.brazil.finance.application.dto.ReverseJournalEntryRequest;
-import com.erp.brazil.finance.application.event.JournalEntryReversedEvent;
-import com.erp.brazil.finance.domain.model.*;
-import com.erp.brazil.finance.domain.repository.*;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
+import com.erp.brazil.finance.domain.model.FiscalPeriod;
+import com.erp.brazil.finance.domain.model.JournalEntry;
+import com.erp.brazil.finance.domain.model.JournalEntryStatus;
+import com.erp.brazil.finance.domain.model.ReversalEntry;
+import com.erp.brazil.finance.domain.repository.FiscalPeriodRepository;
+import com.erp.brazil.finance.domain.repository.GLEntryRepository;
+import com.erp.brazil.finance.domain.repository.JournalEntryRepository;
+import com.erp.brazil.finance.domain.repository.ReversalEntryRepository;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-@Service
-@Transactional
+@ApplicationScoped
 public class ReverseJournalEntryUseCase {
 
     private final JournalEntryRepository journalEntryRepository;
-    private final JournalEntryLineRepository journalEntryLineRepository;
-    private final GLEntryRepository glEntryRepository;
     private final ReversalEntryRepository reversalEntryRepository;
+    private final GLEntryRepository glEntryRepository;
     private final FiscalPeriodRepository fiscalPeriodRepository;
-    private final ChartOfAccountsRepository chartOfAccountsRepository;
-    private final CostCenterRepository costCenterRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final EventPublisher eventPublisher;
 
+    @Inject
     public ReverseJournalEntryUseCase(JournalEntryRepository journalEntryRepository,
-                                      JournalEntryLineRepository journalEntryLineRepository,
-                                      GLEntryRepository glEntryRepository,
                                       ReversalEntryRepository reversalEntryRepository,
+                                      GLEntryRepository glEntryRepository,
                                       FiscalPeriodRepository fiscalPeriodRepository,
-                                      ChartOfAccountsRepository chartOfAccountsRepository,
-                                      CostCenterRepository costCenterRepository,
-                                      RabbitTemplate rabbitTemplate) {
+                                      EventPublisher eventPublisher) {
         this.journalEntryRepository = journalEntryRepository;
-        this.journalEntryLineRepository = journalEntryLineRepository;
-        this.glEntryRepository = glEntryRepository;
         this.reversalEntryRepository = reversalEntryRepository;
+        this.glEntryRepository = glEntryRepository;
         this.fiscalPeriodRepository = fiscalPeriodRepository;
-        this.chartOfAccountsRepository = chartOfAccountsRepository;
-        this.costCenterRepository = costCenterRepository;
-        this.rabbitTemplate = rabbitTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
-    public JournalEntryDTO execute(UUID originalEntryId, ReverseJournalEntryRequest request, String reversedBy) {
-        JournalEntry originalEntry = journalEntryRepository.findById(originalEntryId)
-                .orElseThrow(() -> new IllegalArgumentException("Original journal entry not found: " + originalEntryId));
+    @Transactional
+    public Result execute(UUID journalEntryId, LocalDate reversalDate, String reversalReason, String reversedBy) {
+        JournalEntry originalEntry = journalEntryRepository.findById(journalEntryId)
+                .orElseThrow(() -> new IllegalArgumentException("Journal entry not found: " + journalEntryId));
 
-        if (originalEntry.getStatus() != JournalEntryStatus.POSTED) {
-            throw new IllegalStateException("Can only reverse posted journal entries");
-        }
+        return switch (originalEntry.getStatus()) {
+            case POSTED -> createReversalEntry(originalEntry, reversalDate, reversalReason, reversedBy);
+            case DRAFT -> Result.failure("Cannot reverse a draft entry");
+            case REVERSED -> Result.failure("Journal entry already reversed");
+            case CANCELLED -> Result.failure("Journal entry is cancelled");
+        };
+    }
 
-        if (originalEntry.isReversed()) {
-            throw new IllegalStateException("Journal entry has already been reversed");
-        }
-
+    private Result createReversalEntry(JournalEntry originalEntry, LocalDate reversalDate, String reversalReason, String reversedBy) {
+        // Validate fiscal period for reversal date
         FiscalPeriod reversalPeriod = fiscalPeriodRepository.findByFiscalYearAndDate(
-                originalEntry.getFiscalPeriod().getFiscalYear(), request.reversalDate())
-                .orElseThrow(() -> new IllegalArgumentException("No fiscal period found for reversal date: " + request.reversalDate()));
+                originalEntry.getFiscalPeriod().getFiscalYear(), reversalDate)
+                .orElseThrow(() -> new IllegalArgumentException("No fiscal period found for reversal date: " + reversalDate));
 
         if (reversalPeriod.isLocked()) {
-            throw new IllegalStateException("Cannot reverse entry in locked fiscal period");
-        }
-        if (reversalPeriod.isClosed()) {
-            throw new IllegalStateException("Cannot reverse entry in closed fiscal period");
+            return Result.failure("Reversal fiscal period is locked: " + reversalPeriod.getPeriodNumber());
         }
 
+        if (reversalPeriod.isClosed()) {
+            return Result.failure("Reversal fiscal period is closed: " + reversalPeriod.getPeriodNumber());
+        }
+
+        // Create reversal journal entry
         JournalEntry reversalEntry = new JournalEntry(
                 "REV-" + originalEntry.getReference(),
-                request.reversalDate(),
+                reversalDate,
                 reversalPeriod,
-                "Reversal of " + originalEntry.getReference() + ": " + request.reason()
+                "Reversal of: " + originalEntry.getReference() + " - " + reversalReason
         );
 
-        List<JournalEntryLine> reversalLines = new ArrayList<>();
-        List<GLEntry> reversalGLEntries = new ArrayList<>();
-
-        for (JournalEntryLine originalLine : originalEntry.getLines()) {
-            JournalEntryLine reversalLine = new JournalEntryLine(
+        // Copy lines with swapped debit/credit
+        for (var line : originalEntry.getLines()) {
+            reversalEntry.addLine(new com.erp.brazil.finance.domain.model.JournalEntryLine(
                     reversalEntry,
-                    originalLine.getAccount(),
-                    originalLine.getLineNumber(),
-                    originalLine.getCreditAmount(),
-                    originalLine.getDebitAmount()
-            );
-            reversalLine.setDescription("REV: " + originalLine.getDescription());
-            reversalLine.setCostCenter(originalLine.getCostCenter());
-            reversalLines.add(reversalLine);
-
-            if (originalLine.getCreditAmount().compareTo(BigDecimal.ZERO) > 0) {
-                GLEntry glEntry = new GLEntry(
-                        reversalEntry,
-                        originalLine.getAccount(),
-                        reversalPeriod,
-                        request.reversalDate(),
-                        EntryType.DEBIT,
-                        originalLine.getCreditAmount()
-                );
-                glEntry.setCostCenter(originalLine.getCostCenter());
-                glEntry.setDescription("REV: " + originalLine.getDescription());
-                reversalGLEntries.add(glEntry);
-            }
-
-            if (originalLine.getDebitAmount().compareTo(BigDecimal.ZERO) > 0) {
-                GLEntry glEntry = new GLEntry(
-                        reversalEntry,
-                        originalLine.getAccount(),
-                        reversalPeriod,
-                        request.reversalDate(),
-                        EntryType.CREDIT,
-                        originalLine.getDebitAmount()
-                );
-                glEntry.setCostCenter(originalLine.getCostCenter());
-                glEntry.setDescription("REV: " + originalLine.getDescription());
-                reversalGLEntries.add(glEntry);
-            }
+                    line.getAccount(),
+                    line.getLineNumber(),
+                    line.getCreditAmount(),
+                    line.getDebitAmount()
+            ));
+            reversalEntry.getLines().getLast().setCostCenter(line.getCostCenter());
+            reversalEntry.getLines().getLast().setDescription("Reversal: " + line.getDescription());
         }
 
-        reversalEntry.setLines(reversalLines);
-        reversalEntry.setGlEntries(reversalGLEntries);
         reversalEntry.setStatus(JournalEntryStatus.POSTED);
         reversalEntry.setPostedAt(LocalDateTime.now());
         reversalEntry.setPostedBy(reversedBy);
-        reversalEntry.setReversed(true);
-        reversalEntry.setReversedEntry(originalEntry);
-        reversalEntry.setReversalReason(request.reason());
+        reversalEntry = journalEntryRepository.save(reversalEntry);
 
+        // Create GL entries for reversal
+        for (var line : reversalEntry.getLines()) {
+            if (line.getDebitAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                createGLEntry(reversalEntry, line, line.getDebitAmount(), com.erp.brazil.finance.domain.model.EntryType.DEBIT);
+            }
+            if (line.getCreditAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                createGLEntry(reversalEntry, line, line.getCreditAmount(), com.erp.brazil.finance.domain.model.EntryType.CREDIT);
+            }
+        }
+
+        // Create reversal record
+        ReversalEntry reversal = new ReversalEntry(originalEntry, reversalEntry, reversalDate, reversalReason, reversedBy);
+        reversalEntryRepository.save(reversal);
+
+        // Update original entry
         originalEntry.setReversed(true);
         originalEntry.setReversedEntry(reversalEntry);
-        originalEntry.setReversalReason(request.reason());
+        originalEntry.setReversalReason(reversalReason);
         originalEntry.setStatus(JournalEntryStatus.REVERSED);
-
-        journalEntryRepository.save(reversalEntry);
         journalEntryRepository.save(originalEntry);
 
-        ReversalEntry reversalRecord = new ReversalEntry(
-                originalEntry,
-                reversalEntry,
-                request.reversalDate(),
-                request.reason(),
-                reversedBy
-        );
-        reversalEntryRepository.save(reversalRecord);
-
-        calculateRunningBalances(reversalGLEntries);
-
-        publishEvent(originalEntry, reversalEntry, request, reversedBy);
-
-        return toDTO(reversalEntry);
+        return Result.success(reversalEntry);
     }
 
-    private void calculateRunningBalances(List<GLEntry> glEntries) {
-        glEntries.sort((a, b) -> {
-            int dateCompare = a.getEntryDate().compareTo(b.getEntryDate());
-            if (dateCompare != 0) return dateCompare;
-            return a.getCreatedAt().compareTo(b.getCreatedAt());
-        });
+    private void createGLEntry(JournalEntry journalEntry, com.erp.brazil.finance.domain.model.JournalEntryLine line,
+                               java.math.BigDecimal amount, com.erp.brazil.finance.domain.model.EntryType entryType) {
+        var account = line.getAccount();
+        var fiscalPeriod = journalEntry.getFiscalPeriod();
 
-        for (GLEntry entry : glEntries) {
-            ChartOfAccounts account = entry.getAccount();
-            FiscalPeriod period = entry.getFiscalPeriod();
+        java.math.BigDecimal runningBalance = glEntryRepository.getRunningBalanceForAccount(account, journalEntry.getEntryDate());
+        if (runningBalance == null) {
+            runningBalance = java.math.BigDecimal.ZERO;
+        }
 
-            BigDecimal lastBalance = glEntryRepository.findFirstByAccountAndFiscalPeriodOrderByEntryDateDescCreatedAtDesc(account, period)
-                    .map(GLEntry::getRunningBalance)
-                    .orElse(BigDecimal.ZERO);
+        if (entryType == com.erp.brazil.finance.domain.model.EntryType.DEBIT) {
+            runningBalance = runningBalance.add(amount);
+        } else {
+            runningBalance = runningBalance.subtract(amount);
+        }
 
-            BigDecimal newBalance;
-            if (entry.getEntryType() == EntryType.DEBIT) {
-                newBalance = lastBalance.add(entry.getAmount());
-            } else {
-                newBalance = lastBalance.subtract(entry.getAmount());
-            }
-            entry.setRunningBalance(newBalance);
+        com.erp.brazil.finance.domain.model.GLEntry glEntry = new com.erp.brazil.finance.domain.model.GLEntry(
+                journalEntry,
+                account,
+                fiscalPeriod,
+                journalEntry.getEntryDate(),
+                entryType,
+                amount
+        );
+        glEntry.setRunningBalance(runningBalance);
+        glEntry.setCostCenter(line.getCostCenter());
+        glEntry.setDescription(line.getDescription());
+
+        glEntryRepository.save(glEntry);
+    }
+
+    public sealed interface Result permits Result.Success, Result.Failure {
+        boolean isSuccess();
+        static Success success(JournalEntry journalEntry) { return new Success(journalEntry); }
+        static Failure failure(String message) { return new Failure(message); }
+
+        record Success(JournalEntry journalEntry) implements Result {
+            @Override public boolean isSuccess() { return true; }
+        }
+        record Failure(String message) implements Result {
+            @Override public boolean isSuccess() { return false; }
         }
     }
 
-    private void publishEvent(JournalEntry originalEntry, JournalEntry reversalEntry,
-                              ReverseJournalEntryRequest request, String reversedBy) {
-        JournalEntryReversedEvent event = new JournalEntryReversedEvent(
-                UUID.randomUUID(),
-                originalEntry.getId(),
-                reversalEntry.getId(),
-                originalEntry.getReference(),
-                request.reversalDate(),
-                request.reason(),
-                reversedBy,
-                LocalDateTime.now()
-        );
-
-        rabbitTemplate.convertAndSend("finance.exchange", "journal.entry.reversed", event);
-    }
-
-    private JournalEntryDTO toDTO(JournalEntry journalEntry) {
-        List<JournalEntryDTO.JournalEntryLineDTO> lineDTOs = journalEntry.getLines().stream()
-                .map(line -> new JournalEntryDTO.JournalEntryLineDTO(
-                        line.getId(),
-                        line.getAccount().getId(),
-                        line.getCostCenter() != null ? line.getCostCenter().getId() : null,
-                        line.getLineNumber(),
-                        line.getDescription(),
-                        line.getDebitAmount(),
-                        line.getCreditAmount()
-                ))
-                .collect(Collectors.toList());
-
-        return new JournalEntryDTO(
-                journalEntry.getId(),
-                journalEntry.getReference(),
-                journalEntry.getEntryDate(),
-                journalEntry.getFiscalPeriod().getId(),
-                journalEntry.getDescription(),
-                journalEntry.getStatus(),
-                journalEntry.getTotalDebit(),
-                journalEntry.getTotalCredit(),
-                journalEntry.isReversed(),
-                journalEntry.getReversedEntry() != null ? journalEntry.getReversedEntry().getId() : null,
-                journalEntry.getReversalReason(),
-                lineDTOs
-        );
+    interface EventPublisher {
+        void publish(Object event);
     }
 }

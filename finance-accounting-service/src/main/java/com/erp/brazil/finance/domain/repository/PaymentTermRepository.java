@@ -1,27 +1,24 @@
 package com.erp.brazil.finance.domain.repository;
 
 import com.erp.brazil.finance.domain.model.PaymentTerm;
-import com.erp.brazil.finance.domain.model.PaymentTermType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Repository
 public interface PaymentTermRepository extends JpaRepository<PaymentTerm, UUID> {
 
-    Optional<PaymentTerm> findByCode(String code);
+    Optional<PaymentTerm> findByCodeAndCompanyId(String code, UUID companyId);
 
-    Optional<PaymentTerm> findByDefaultTermTrue();
+    List<PaymentTerm> findByCompanyIdOrderByCode(UUID companyId);
 
-    List<PaymentTerm> findByActiveTrueOrderByCode();
+    List<PaymentTerm> findByCompanyIdAndActiveTrueOrderByCode(UUID companyId);
 
-    List<PaymentTerm> findByTermType(PaymentTermType termType);
+    Page<PaymentTerm> findByCompanyId(UUID companyId, Pageable pageable);
 
-    Page<PaymentTerm> findByActiveTrue(Pageable pageable);
-
-    Page<PaymentTerm> findAll(Pageable pageable);
-
-    boolean existsByCodeAndIdNot(String code, UUID id);
+    boolean existsByCodeAndCompanyId(String code, UUID companyId);
 }

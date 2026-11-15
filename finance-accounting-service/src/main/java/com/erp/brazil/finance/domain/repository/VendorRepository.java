@@ -1,34 +1,36 @@
 package com.erp.brazil.finance.domain.repository;
 
 import com.erp.brazil.finance.domain.model.Vendor;
-import com.erp.brazil.finance.domain.model.DocumentType;
+import com.erp.brazil.finance.domain.model.VendorStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Repository
 public interface VendorRepository extends JpaRepository<Vendor, UUID> {
 
-    Optional<Vendor> findByCodeAndCompanyId(String code, UUID companyId);
+    Optional<Vendor> findByCode(String code);
 
-    Optional<Vendor> findByDocumentTypeAndDocumentNumberAndCompanyId(DocumentType documentType, String documentNumber, UUID companyId);
+    Optional<Vendor> findByDocumentNumber(String documentNumber);
 
-    List<Vendor> findByCompanyIdOrderByName(UUID companyId);
+    List<Vendor> findByActiveTrueOrderByName();
 
-    List<Vendor> findByCompanyIdAndActiveTrueOrderByName(UUID companyId);
+    List<Vendor> findByStatus(VendorStatus status);
 
-    @Query("SELECT v FROM Vendor v WHERE v.companyId = :companyId AND (v.name LIKE %:search% OR v.tradeName LIKE %:search% OR v.documentNumber LIKE %:search%) ORDER BY v.name")
-    Page<Vendor> searchByCompanyIdAndTerm(@Param("companyId") UUID companyId, @Param("search") String search, Pageable pageable);
+    List<Vendor> findByNameContainingIgnoreCase(String name);
 
-    Page<Vendor> findByCompanyId(UUID companyId, Pageable pageable);
+    @Query("SELECT v FROM Vendor v WHERE v.name ILIKE %:name% OR v.tradeName ILIKE %:name% OR v.documentNumber LIKE %:name%")
+    Page<Vendor> searchByNameOrDocument(@Param("name") String name, Pageable pageable);
 
-    boolean existsByCodeAndCompanyId(String code, UUID companyId);
+    Page<Vendor> findByStatus(VendorStatus status, Pageable pageable);
 
-    boolean existsByDocumentTypeAndDocumentNumberAndCompanyId(DocumentType documentType, String documentNumber, UUID companyId);
+    Page<Vendor> findAll(Pageable pageable);
+
+    boolean existsByCodeAndIdNot(String code, UUID id);
+
+    boolean existsByDocumentNumberAndIdNot(String documentNumber, UUID id);
 }

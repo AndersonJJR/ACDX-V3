@@ -1,47 +1,50 @@
 package com.erp.brazil.finance.domain.repository;
 
 import com.erp.brazil.finance.domain.model.Customer;
-import com.erp.brazil.finance.domain.model.ReceivableInvoice;
+import com.erp.brazil.finance.domain.model.FiscalPeriod;
 import com.erp.brazil.finance.domain.model.InvoiceStatus;
+import com.erp.brazil.finance.domain.model.ReceivableInvoice;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Repository
 public interface ReceivableInvoiceRepository extends JpaRepository<ReceivableInvoice, UUID> {
 
-    Optional<ReceivableInvoice> findByCustomerAndNumberAndSeries(Customer customer, String number, String series);
+    Optional<ReceivableInvoice> findByCustomerAndInvoiceNumberAndInvoiceSeries(Customer customer, String invoiceNumber, String invoiceSeries);
 
-    Optional<ReceivableInvoice> findByAccessKey(String accessKey);
+    List<ReceivableInvoice> findByCustomerOrderByInvoiceDateDesc(Customer customer);
 
-    List<ReceivableInvoice> findByCustomerOrderByIssueDateDesc(Customer customer);
+    List<ReceivableInvoice> findByCustomerAndStatus(Customer customer, InvoiceStatus status);
 
-    List<ReceivableInvoice> findByCustomerAndStatusOrderByDueDateAsc(Customer customer, InvoiceStatus status);
+    List<ReceivableInvoice> findByFiscalPeriodOrderByInvoiceDateDesc(FiscalPeriod fiscalPeriod);
 
-    List<ReceivableInvoice> findByCompanyIdAndStatusOrderByDueDateAsc(UUID companyId, InvoiceStatus status);
+    List<ReceivableInvoice> findByFiscalPeriodAndStatus(FiscalPeriod fiscalPeriod, InvoiceStatus status);
 
-    List<ReceivableInvoice> findByCompanyIdAndDueDateBetweenOrderByDueDateAsc(UUID companyId, LocalDate startDate, LocalDate endDate);
+    List<ReceivableInvoice> findByDueDateBetween(LocalDate startDate, LocalDate endDate);
 
-    @Query("SELECT ri FROM ReceivableInvoice ri WHERE ri.companyId = :companyId AND ri.dueDate <= :date AND ri.status IN ('PENDING', 'AUTHORIZED', 'PARTIALLY_PAID', 'OVERDUE') ORDER BY ri.dueDate ASC")
-    List<ReceivableInvoice> findOverdueAndDueReceivables(@Param("companyId") UUID companyId, @Param("date") LocalDate date);
+    List<ReceivableInvoice> findByDueDateLessThanEqualAndStatusIn(LocalDate date, List<InvoiceStatus> statuses);
 
-    @Query("SELECT ri FROM ReceivableInvoice ri WHERE ri.companyId = :companyId AND ri.status IN ('PENDING', 'AUTHORIZED', 'PARTIALLY_PAID') ORDER BY ri.dueDate ASC")
-    List<ReceivableInvoice> findOpenReceivables(@Param("companyId") UUID companyId);
+    List<ReceivableInvoice> findByStatusIn(List<InvoiceStatus> statuses);
+
+    Page<ReceivableInvoice> findByStatusIn(List<InvoiceStatus> statuses, Pageable pageable);
+
+    @Query("SELECT r FROM ReceivableInvoice r WHERE r.customer = :customer AND r.balanceAmount > 0 ORDER BY r.dueDate ASC")
+    List<ReceivableInvoice> findOpenInvoicesByCustomer(@Param("customer") Customer customer);
+
+    @Query("SELECT r FROM ReceivableInvoice r WHERE r.dueDate <= :date AND r.balanceAmount > 0")
+    List<ReceivableInvoice> findOverdueInvoices(@Param("date") LocalDate date);
 
     Page<ReceivableInvoice> findByCustomer(Customer customer, Pageable pageable);
 
-    Page<ReceivableInvoice> findByCompanyIdAndStatus(UUID companyId, InvoiceStatus status, Pageable pageable);
+    Page<ReceivableInvoice> findByFiscalPeriod(FiscalPeriod fiscalPeriod, Pageable pageable);
 
-    Page<ReceivableInvoice> findByCompanyId(UUID companyId, Pageable pageable);
+    Page<ReceivableInvoice> findByStatus(InvoiceStatus status, Pageable pageable);
 
-    boolean existsByCustomerAndNumberAndSeries(Customer customer, String number, String series);
-
-    boolean existsByAccessKey(String accessKey);
+    Page<ReceivableInvoice> findAll(Pageable pageable);
 }

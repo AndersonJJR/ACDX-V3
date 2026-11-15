@@ -1,35 +1,36 @@
 package com.erp.brazil.finance.domain.event;
 
-import com.erp.brazil.finance.domain.model.DepreciationEntry;
+import com.erp.brazil.finance.domain.model.AssetDepreciationSchedule;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record AssetDepreciationPostedEvent(
         UUID eventId,
         LocalDateTime occurredAt,
-        UUID depreciationEntryId,
+        UUID scheduleId,
         UUID assetId,
         String assetCode,
-        UUID fiscalPeriodId,
-        LocalDate depreciationDate,
+        LocalDate periodStart,
+        LocalDate periodEnd,
         java.math.BigDecimal depreciationAmount,
         java.math.BigDecimal accumulatedDepreciation,
         java.math.BigDecimal bookValue,
         UUID journalEntryId
 ) {
-    public static AssetDepreciationPostedEvent from(DepreciationEntry depreciationEntry) {
+    public static AssetDepreciationPostedEvent from(AssetDepreciationSchedule schedule) {
         return new AssetDepreciationPostedEvent(
                 UUID.randomUUID(),
                 LocalDateTime.now(),
-                depreciationEntry.getId(),
-                depreciationEntry.getAsset().getId(),
-                depreciationEntry.getAsset().getCode(),
-                depreciationEntry.getFiscalPeriod().getId(),
-                depreciationEntry.getDepreciationDate(),
-                depreciationEntry.getDepreciationAmount(),
-                depreciationEntry.getAccumulatedDepreciation(),
-                depreciationEntry.getBookValue(),
-                depreciationEntry.getJournalEntry() != null ? depreciationEntry.getJournalEntry().getId() : null
+                schedule.getId(),
+                schedule.getAsset().getId(),
+                schedule.getAsset().getCode(),
+                schedule.getPeriodStart(),
+                schedule.getPeriodEnd(),
+                schedule.getDepreciationAmount(),
+                schedule.getAccumulatedDepreciation(),
+                schedule.getBookValue(),
+                null // journalEntryId would need to be added to schedule
         );
     }
 }

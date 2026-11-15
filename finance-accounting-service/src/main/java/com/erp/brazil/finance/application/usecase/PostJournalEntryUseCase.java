@@ -1,23 +1,25 @@
 package com.erp.brazil.finance.application.usecase;
 
-import com.erp.brazil.finance.application.dto.CreateJournalEntryRequest;
-import com.erp.brazil.finance.application.dto.JournalEntryDTO;
-import com.erp.brazil.finance.application.event.JournalEntryPostedEvent;
-import com.erp.brazil.finance.domain.model.*;
-import com.erp.brazil.finance.domain.repository.*;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.erp.brazil.finance.domain.event.JournalEntryPostedEvent;
+import com.erp.brazil.finance.domain.model.ChartOfAccounts;
+import com.erp.brazil.finance.domain.model.FiscalPeriod;
+import com.erp.brazil.finance.domain.model.JournalEntry;
+import com.erp.brazil.finance.domain.model.JournalEntryLine;
+import com.erp.brazil.finance.domain.model.JournalEntryStatus;
+import com.erp.brazil.finance.domain.repository.ChartOfAccountsRepository;
+import com.erp.brazil.finance.domain.repository.FiscalPeriodRepository;
+import com.erp.brazil.finance.domain.repository.GLEntryRepository;
+import com.erp.brazil.finance.domain.repository.JournalEntryRepository;
+import com.erp.brazil.finance.domain.repository.JournalEntryLineRepository;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-@Service
-@Transactional
+@ApplicationScoped
 public class PostJournalEntryUseCase {
 
     private final JournalEntryRepository journalEntryRepository;
@@ -25,218 +27,134 @@ public class PostJournalEntryUseCase {
     private final GLEntryRepository glEntryRepository;
     private final FiscalPeriodRepository fiscalPeriodRepository;
     private final ChartOfAccountsRepository chartOfAccountsRepository;
-    private final CostCenterRepository costCenterRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final EventPublisher eventPublisher;
 
+    @Inject
     public PostJournalEntryUseCase(JournalEntryRepository journalEntryRepository,
                                    JournalEntryLineRepository journalEntryLineRepository,
                                    GLEntryRepository glEntryRepository,
                                    FiscalPeriodRepository fiscalPeriodRepository,
                                    ChartOfAccountsRepository chartOfAccountsRepository,
-                                   CostCenterRepository costCenterRepository,
-                                   RabbitTemplate rabbitTemplate) {
+                                   EventPublisher eventPublisher) {
         this.journalEntryRepository = journalEntryRepository;
         this.journalEntryLineRepository = journalEntryLineRepository;
         this.glEntryRepository = glEntryRepository;
         this.fiscalPeriodRepository = fiscalPeriodRepository;
         this.chartOfAccountsRepository = chartOfAccountsRepository;
-        this.costCenterRepository = costCenterRepository;
-        this.rabbitTemplate = rabbitTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
-    public JournalEntryDTO execute(CreateJournalEntryRequest request, String postedBy) {
-        FiscalPeriod fiscalPeriod = fiscalPeriodRepository.findById(request.fiscalPeriodId())
-                .orElseThrow(() -> new IllegalArgumentException("Fiscal period not found: " + request.fiscalPeriodId()));
+    @Transactional
+    public Result execute(UUID journalEntryId, String postedBy) {
+        JournalEntry journalEntry = journalEntryRepository.findById(journalEntryId)
+                .orElseThrow(() -> new IllegalArgumentException("Journal entry not found: " + journalEntryId));
 
+        return switch (journalEntry.getStatus()) {
+            case DRAFT -> postDraftEntry(journalEntry, postedBy);
+            case POSTED -> Result.failure("Journal entry already posted");
+            case REVERSED -> Result.failure("Journal entry has been reversed");
+            case CANCELLED -> Result.failure("Journal entry is cancelled");
+        };
+    }
+
+    private Result postDraftEntry(JournalEntry journalEntry, String postedBy) {
+        // Validate fiscal period is not locked
+        FiscalPeriod fiscalPeriod = journalEntry.getFiscalPeriod();
         if (fiscalPeriod.isLocked()) {
-            throw new IllegalStateException("Cannot post journal entry to locked fiscal period");
-        }
-        if (fiscalPeriod.isClosed()) {
-            throw new IllegalStateException("Cannot post journal entry to closed fiscal period");
+            return Result.failure("Fiscal period is locked: " + fiscalPeriod.getPeriodNumber());
         }
 
-        validateDoubleEntry(request.lines());
+        // Validate entry is balanced
+        if (!journalEntry.isBalanced()) {
+            return Result.failure("Journal entry is not balanced: Debit=" + journalEntry.getTotalDebit() + ", Credit=" + journalEntry.getTotalCredit());
+        }
 
-        JournalEntry journalEntry = new JournalEntry(
-                request.reference(),
-                request.entryDate(),
-                fiscalPeriod,
-                request.description()
-        );
-
-        List<JournalEntryLine> lines = new ArrayList<>();
-        List<GLEntry> glEntries = new ArrayList<>();
-
-        for (CreateJournalEntryRequest.CreateJournalEntryLineRequest lineRequest : request.lines()) {
-            ChartOfAccounts account = chartOfAccountsRepository.findById(lineRequest.accountId())
-                    .orElseThrow(() -> new IllegalArgumentException("Account not found: " + lineRequest.accountId()));
-
-            CostCenter costCenter = null;
-            if (lineRequest.costCenterId() != null) {
-                costCenter = costCenterRepository.findById(lineRequest.costCenterId())
-                        .orElseThrow(() -> new IllegalArgumentException("Cost center not found: " + lineRequest.costCenterId()));
+        // Validate all lines have valid accounts
+        List<JournalEntryLine> lines = journalEntryLineRepository.findByJournalEntryOrderByLineNumber(journalEntry);
+        for (JournalEntryLine line : lines) {
+            ChartOfAccounts account = line.getAccount();
+            if (!account.isActive()) {
+                return Result.failure("Account is inactive: " + account.getCode());
             }
-
-            JournalEntryLine line = new JournalEntryLine(
-                    journalEntry,
-                    account,
-                    lineRequest.lineNumber(),
-                    lineRequest.debitAmount(),
-                    lineRequest.creditAmount()
-            );
-            line.setDescription(lineRequest.description());
-            line.setCostCenter(costCenter);
-            lines.add(line);
-
-            if (lineRequest.debitAmount().compareTo(BigDecimal.ZERO) > 0) {
-                GLEntry glEntry = new GLEntry(
-                        journalEntry,
-                        account,
-                        fiscalPeriod,
-                        request.entryDate(),
-                        EntryType.DEBIT,
-                        lineRequest.debitAmount()
-                );
-                glEntry.setCostCenter(costCenter);
-                glEntry.setDescription(lineRequest.description());
-                glEntries.add(glEntry);
+            if (!account.isDetail()) {
+                return Result.failure("Account is not a detail account: " + account.getCode());
             }
-
-            if (lineRequest.creditAmount().compareTo(BigDecimal.ZERO) > 0) {
-                GLEntry glEntry = new GLEntry(
-                        journalEntry,
-                        account,
-                        fiscalPeriod,
-                        request.entryDate(),
-                        EntryType.CREDIT,
-                        lineRequest.creditAmount()
-                );
-                glEntry.setCostCenter(costCenter);
-                glEntry.setDescription(lineRequest.description());
-                glEntries.add(glEntry);
+            if (!fiscalPeriod.getFiscalYear().equals(account.getFiscalYear())) {
+                return Result.failure("Account belongs to different fiscal year: " + account.getCode());
             }
         }
 
-        journalEntry.setLines(lines);
-        journalEntry.setGlEntries(glEntries);
+        // Update journal entry status
         journalEntry.setStatus(JournalEntryStatus.POSTED);
         journalEntry.setPostedAt(LocalDateTime.now());
         journalEntry.setPostedBy(postedBy);
+        journalEntry = journalEntryRepository.save(journalEntry);
 
-        journalEntryRepository.save(journalEntry);
+        // Create GL entries
+        createGLEntries(journalEntry, lines);
 
-        calculateRunningBalances(glEntries);
+        // Publish event
+        eventPublisher.publish(JournalEntryPostedEvent.from(journalEntry));
 
-        publishEvent(journalEntry, postedBy);
-
-        return toDTO(journalEntry);
+        return Result.success(journalEntry);
     }
 
-    private void validateDoubleEntry(List<CreateJournalEntryRequest.CreateJournalEntryLineRequest> lines) {
-        BigDecimal totalDebit = lines.stream()
-                .map(CreateJournalEntryRequest.CreateJournalEntryLineRequest::debitAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalCredit = lines.stream()
-                .map(CreateJournalEntryRequest.CreateJournalEntryLineRequest::creditAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (totalDebit.compareTo(totalCredit) != 0) {
-            throw new IllegalArgumentException("Journal entry is not balanced: total debit (" + totalDebit +
-                    ") != total credit (" + totalCredit + ")");
-        }
-
-        for (CreateJournalEntryRequest.CreateJournalEntryLineRequest line : lines) {
-            if (!line.isValid()) {
-                throw new IllegalArgumentException("Line " + line.lineNumber() +
-                        " must have either debit or credit amount, not both or neither");
+    private void createGLEntries(JournalEntry journalEntry, List<JournalEntryLine> lines) {
+        for (JournalEntryLine line : lines) {
+            if (line.getDebitAmount().compareTo(BigDecimal.ZERO) > 0) {
+                createGLEntry(journalEntry, line, line.getDebitAmount(), com.erp.brazil.finance.domain.model.EntryType.DEBIT);
+            }
+            if (line.getCreditAmount().compareTo(BigDecimal.ZERO) > 0) {
+                createGLEntry(journalEntry, line, line.getCreditAmount(), com.erp.brazil.finance.domain.model.EntryType.CREDIT);
             }
         }
     }
 
-    private void calculateRunningBalances(List<GLEntry> glEntries) {
-        glEntries.sort((a, b) -> {
-            int dateCompare = a.getEntryDate().compareTo(b.getEntryDate());
-            if (dateCompare != 0) return dateCompare;
-            return a.getCreatedAt().compareTo(b.getCreatedAt());
-        });
+    private void createGLEntry(JournalEntry journalEntry, JournalEntryLine line, BigDecimal amount, com.erp.brazil.finance.domain.model.EntryType entryType) {
+        ChartOfAccounts account = line.getAccount();
+        FiscalPeriod fiscalPeriod = journalEntry.getFiscalPeriod();
 
-        for (GLEntry entry : glEntries) {
-            ChartOfAccounts account = entry.getAccount();
-            FiscalPeriod period = entry.getFiscalPeriod();
+        // Get running balance
+        BigDecimal runningBalance = glEntryRepository.getRunningBalanceForAccount(account, journalEntry.getEntryDate());
+        if (runningBalance == null) {
+            runningBalance = BigDecimal.ZERO;
+        }
 
-            BigDecimal lastBalance = glEntryRepository.findFirstByAccountAndFiscalPeriodOrderByEntryDateDescCreatedAtDesc(account, period)
-                    .map(GLEntry::getRunningBalance)
-                    .orElse(BigDecimal.ZERO);
+        if (entryType == com.erp.brazil.finance.domain.model.EntryType.DEBIT) {
+            runningBalance = runningBalance.add(amount);
+        } else {
+            runningBalance = runningBalance.subtract(amount);
+        }
 
-            BigDecimal newBalance;
-            if (entry.getEntryType() == EntryType.DEBIT) {
-                newBalance = lastBalance.add(entry.getAmount());
-            } else {
-                newBalance = lastBalance.subtract(entry.getAmount());
-            }
-            entry.setRunningBalance(newBalance);
+        com.erp.brazil.finance.domain.model.GLEntry glEntry = new com.erp.brazil.finance.domain.model.GLEntry(
+                journalEntry,
+                account,
+                fiscalPeriod,
+                journalEntry.getEntryDate(),
+                entryType,
+                amount
+        );
+        glEntry.setRunningBalance(runningBalance);
+        glEntry.setCostCenter(line.getCostCenter());
+        glEntry.setDescription(line.getDescription());
+
+        glEntryRepository.save(glEntry);
+    }
+
+    public sealed interface Result permits Result.Success, Result.Failure {
+        boolean isSuccess();
+        static Success success(JournalEntry journalEntry) { return new Success(journalEntry); }
+        static Failure failure(String message) { return new Failure(message); }
+
+        record Success(JournalEntry journalEntry) implements Result {
+            @Override public boolean isSuccess() { return true; }
+        }
+        record Failure(String message) implements Result {
+            @Override public boolean isSuccess() { return false; }
         }
     }
 
-    private void publishEvent(JournalEntry journalEntry, String postedBy) {
-        List<JournalEntryPostedEvent.JournalEntryLineEvent> lineEvents = journalEntry.getLines().stream()
-                .map(line -> new JournalEntryPostedEvent.JournalEntryLineEvent(
-                        line.getAccount().getId(),
-                        line.getAccount().getCode(),
-                        line.getAccount().getName(),
-                        line.getCostCenter() != null ? line.getCostCenter().getId() : null,
-                        line.getCostCenter() != null ? line.getCostCenter().getCode() : null,
-                        line.getDebitAmount(),
-                        line.getCreditAmount()
-                ))
-                .collect(Collectors.toList());
-
-        JournalEntryPostedEvent event = new JournalEntryPostedEvent(
-                UUID.randomUUID(),
-                journalEntry.getId(),
-                journalEntry.getReference(),
-                journalEntry.getEntryDate(),
-                journalEntry.getFiscalPeriod().getId(),
-                journalEntry.getFiscalPeriod().getFiscalYear().getYear(),
-                journalEntry.getFiscalPeriod().getPeriodNumber(),
-                journalEntry.getTotalDebit(),
-                journalEntry.getTotalCredit(),
-                lineEvents,
-                postedBy,
-                journalEntry.getPostedAt(),
-                LocalDateTime.now()
-        );
-
-        rabbitTemplate.convertAndSend("finance.exchange", "journal.entry.posted", event);
-    }
-
-    private JournalEntryDTO toDTO(JournalEntry journalEntry) {
-        List<JournalEntryDTO.JournalEntryLineDTO> lineDTOs = journalEntry.getLines().stream()
-                .map(line -> new JournalEntryDTO.JournalEntryLineDTO(
-                        line.getId(),
-                        line.getAccount().getId(),
-                        line.getCostCenter() != null ? line.getCostCenter().getId() : null,
-                        line.getLineNumber(),
-                        line.getDescription(),
-                        line.getDebitAmount(),
-                        line.getCreditAmount()
-                ))
-                .collect(Collectors.toList());
-
-        return new JournalEntryDTO(
-                journalEntry.getId(),
-                journalEntry.getReference(),
-                journalEntry.getEntryDate(),
-                journalEntry.getFiscalPeriod().getId(),
-                journalEntry.getDescription(),
-                journalEntry.getStatus(),
-                journalEntry.getTotalDebit(),
-                journalEntry.getTotalCredit(),
-                journalEntry.isReversed(),
-                journalEntry.getReversedEntry() != null ? journalEntry.getReversedEntry().getId() : null,
-                journalEntry.getReversalReason(),
-                lineDTOs
-        );
+    interface EventPublisher {
+        void publish(JournalEntryPostedEvent event);
     }
 }

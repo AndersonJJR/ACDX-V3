@@ -25,5 +25,6 @@ public record InvoiceValidatedEvent(
     UUID purchaseOrderId,
     UUID salesOrderId,
     UUID receiptId,
+    UUID paymentTermId,
     LocalDateTime occurredAt
 ) {}

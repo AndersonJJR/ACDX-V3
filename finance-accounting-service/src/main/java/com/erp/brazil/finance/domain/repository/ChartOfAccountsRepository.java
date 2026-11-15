@@ -25,6 +25,8 @@ public interface ChartOfAccountsRepository extends JpaRepository<ChartOfAccounts
 
     List<ChartOfAccounts> findByAccountTypeAndFiscalYearOrderByCode(com.erp.brazil.finance.domain.model.AccountType accountType, FiscalYear fiscalYear);
 
+    Page<ChartOfAccounts> findByAccountTypeAndFiscalYearOrderByCode(com.erp.brazil.finance.domain.model.AccountType accountType, FiscalYear fiscalYear, Pageable pageable);
+
     List<ChartOfAccounts> findByActiveTrueAndFiscalYearOrderByCode(FiscalYear fiscalYear);
 
     @Query("SELECT c FROM ChartOfAccounts c WHERE c.fiscalYear = :fiscalYear AND c.code LIKE :pattern% ORDER BY c.code")

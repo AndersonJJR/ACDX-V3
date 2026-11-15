@@ -1,37 +1,53 @@
 package com.erp.brazil.finance.domain.repository;
 
+import com.erp.brazil.finance.domain.model.BankAccount;
+import com.erp.brazil.finance.domain.model.Customer;
 import com.erp.brazil.finance.domain.model.Payment;
-import com.erp.brazil.finance.domain.model.PaymentMethod;
 import com.erp.brazil.finance.domain.model.PaymentStatus;
 import com.erp.brazil.finance.domain.model.PaymentType;
+import com.erp.brazil.finance.domain.model.Vendor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Repository
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
-    List<Payment> findByCompanyIdAndTypeOrderByPaymentDateDesc(UUID companyId, PaymentType type);
+    Optional<Payment> findByReference(String reference);
 
-    List<Payment> findByCompanyIdAndTypeAndStatusOrderByPaymentDateDesc(UUID companyId, PaymentType type, PaymentStatus status);
+    List<Payment> findByVendorOrderByPaymentDateDesc(Vendor vendor);
 
-    List<Payment> findByMethodAndPaymentDateBetweenOrderByPaymentDateDesc(PaymentMethod method, LocalDate startDate, LocalDate endDate);
+    List<Payment> findByCustomerOrderByPaymentDateDesc(Customer customer);
 
-    List<Payment> findByCompanyIdAndPaymentDateBetweenOrderByPaymentDateDesc(UUID companyId, LocalDate startDate, LocalDate endDate);
+    List<Payment> findByBankAccountOrderByPaymentDateDesc(BankAccount bankAccount);
 
-    @Query("SELECT p FROM Payment p WHERE p.companyId = :companyId AND p.type = :type AND p.status = 'PENDING' ORDER BY p.paymentDate ASC")
-    List<Payment> findPendingPaymentsByType(@Param("companyId") UUID companyId, @Param("type") PaymentType type);
+    List<Payment> findByPaymentType(PaymentType paymentType);
 
-    Page<Payment> findByCompanyIdAndType(UUID companyId, PaymentType type, Pageable pageable);
+    List<Payment> findByStatus(PaymentStatus status);
 
-    Page<Payment> findByCompanyId(UUID companyId, Pageable pageable);
+    List<Payment> findByPaymentDateBetween(LocalDate startDate, LocalDate endDate);
 
-    boolean existsByTransactionId(String transactionId);
+    List<Payment> findByVendorAndStatus(Vendor vendor, PaymentStatus status);
+
+    List<Payment> findByCustomerAndStatus(Customer customer, PaymentStatus status);
+
+    @Query("SELECT p FROM Payment p WHERE p.paymentDate BETWEEN :startDate AND :endDate AND p.status = :status ORDER BY p.paymentDate DESC")
+    Page<Payment> findByDateRangeAndStatus(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, @Param("status") PaymentStatus status, Pageable pageable);
+
+    Page<Payment> findByVendor(Vendor vendor, Pageable pageable);
+
+    Page<Payment> findByCustomer(Customer customer, Pageable pageable);
+
+    Page<Payment> findByBankAccount(BankAccount bankAccount, Pageable pageable);
+
+    Page<Payment> findByStatus(PaymentStatus status, Pageable pageable);
+
+    Page<Payment> findAll(Pageable pageable);
+
+    boolean existsByReferenceAndIdNot(String reference, UUID id);
 }

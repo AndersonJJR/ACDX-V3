@@ -1,99 +1,129 @@
 package com.erp.brazil.finance.application.usecase;
 
-import com.erp.brazil.finance.application.dto.AccountBalanceDTO;
-import com.erp.brazil.finance.application.dto.BalanceSheetRequest;
-import com.erp.brazil.finance.application.dto.BalanceSheetResponse;
-import com.erp.brazil.finance.domain.model.AccountType;
+import com.erp.brazil.finance.domain.model.ChartOfAccounts;
 import com.erp.brazil.finance.domain.model.FiscalPeriod;
+import com.erp.brazil.finance.domain.repository.ChartOfAccountsRepository;
 import com.erp.brazil.finance.domain.repository.FiscalPeriodRepository;
 import com.erp.brazil.finance.domain.repository.GLEntryRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-@Service
-@Transactional(readOnly = true)
+@ApplicationScoped
 public class GenerateBalanceSheetUseCase {
 
-    private final GLEntryRepository glEntryRepository;
+    private final ChartOfAccountsRepository chartOfAccountsRepository;
     private final FiscalPeriodRepository fiscalPeriodRepository;
+    private final GLEntryRepository glEntryRepository;
 
-    public GenerateBalanceSheetUseCase(GLEntryRepository glEntryRepository,
-                                       FiscalPeriodRepository fiscalPeriodRepository) {
-        this.glEntryRepository = glEntryRepository;
+    @Inject
+    public GenerateBalanceSheetUseCase(ChartOfAccountsRepository chartOfAccountsRepository,
+                                       FiscalPeriodRepository fiscalPeriodRepository,
+                                       GLEntryRepository glEntryRepository) {
+        this.chartOfAccountsRepository = chartOfAccountsRepository;
         this.fiscalPeriodRepository = fiscalPeriodRepository;
+        this.glEntryRepository = glEntryRepository;
     }
 
-    public BalanceSheetResponse execute(BalanceSheetRequest request) {
-        FiscalPeriod fiscalPeriod = fiscalPeriodRepository.findById(request.fiscalPeriodId())
-                .orElseThrow(() -> new IllegalArgumentException("Fiscal period not found: " + request.fiscalPeriodId()));
+    public Result execute(UUID fiscalPeriodId) {
+        FiscalPeriod fiscalPeriod = fiscalPeriodRepository.findById(fiscalPeriodId)
+                .orElseThrow(() -> new IllegalArgumentException("Fiscal period not found: " + fiscalPeriodId));
 
-        LocalDate asOfDate = request.asOfDate() != null ? request.asOfDate() : fiscalPeriod.getEndDate();
+        List<ChartOfAccounts> accounts = chartOfAccountsRepository.findByFiscalYearOrderByCode(fiscalPeriod.getFiscalYear());
 
-        List<AccountBalanceDTO> allAccounts = glEntryRepository.getTrialBalance(fiscalPeriod);
+        List<BalanceSheetLine> assetLines = new ArrayList<>();
+        List<BalanceSheetLine> liabilityLines = new ArrayList<>();
+        List<BalanceSheetLine> equityLines = new ArrayList<>();
 
-        List<AccountBalanceDTO> assetAccounts = allAccounts.stream()
-                .filter(a -> a.isDebitBalance() || a.debitTotal().compareTo(BigDecimal.ZERO) > 0 || a.creditTotal().compareTo(BigDecimal.ZERO) > 0)
-                .toList();
+        BigDecimal totalAssets = BigDecimal.ZERO;
+        BigDecimal totalLiabilities = BigDecimal.ZERO;
+        BigDecimal totalEquity = BigDecimal.ZERO;
 
-        List<BalanceSheetResponse.BalanceSheetSectionDTO> assets = buildHierarchy(assetAccounts, AccountType.ASSET);
-        List<BalanceSheetResponse.BalanceSheetSectionDTO> liabilities = buildHierarchy(
-                allAccounts.stream().filter(a -> a.isCreditBalance()).toList(), AccountType.LIABILITY);
-        List<BalanceSheetResponse.BalanceSheetSectionDTO> equity = buildHierarchy(
-                allAccounts.stream().filter(a -> a.isCreditBalance() && a.code().startsWith("3")).toList(), AccountType.EQUITY);
+        for (ChartOfAccounts account : accounts) {
+            if (!account.isDetail()) {
+                continue;
+            }
 
-        BigDecimal totalAssets = assets.stream()
-                .map(BalanceSheetResponse.BalanceSheetSectionDTO::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal balance = glEntryRepository.getBalanceForAccountInPeriod(account, fiscalPeriod);
+            if (balance == null) {
+                balance = BigDecimal.ZERO;
+            }
 
-        BigDecimal totalLiabilities = liabilities.stream()
-                .map(BalanceSheetResponse.BalanceSheetSectionDTO::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (balance.compareTo(BigDecimal.ZERO) == 0) {
+                continue;
+            }
 
-        BigDecimal totalEquity = equity.stream()
-                .map(BalanceSheetResponse.BalanceSheetSectionDTO::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BalanceSheetLine line = new BalanceSheetLine(
+                    account.getCode(),
+                    account.getName(),
+                    balance.abs()
+            );
 
-        return new BalanceSheetResponse(
-                fiscalPeriod.getId(),
-                asOfDate,
-                assets,
-                liabilities,
-                equity,
+            switch (account.getAccountType()) {
+                case ASSET -> {
+                    assetLines.add(line);
+                    totalAssets = totalAssets.add(balance.abs());
+                }
+                case LIABILITY -> {
+                    liabilityLines.add(line);
+                    totalLiabilities = totalLiabilities.add(balance.abs());
+                }
+                case EQUITY -> {
+                    equityLines.add(line);
+                    totalEquity = totalEquity.add(balance.abs());
+                }
+                default -> {} // Revenue and Expense accounts don't appear on balance sheet
+            }
+        }
+
+        BigDecimal totalLiabilitiesAndEquity = totalLiabilities.add(totalEquity);
+
+        return Result.success(new BalanceSheet(
+                fiscalPeriod,
+                assetLines,
+                liabilityLines,
+                equityLines,
                 totalAssets,
                 totalLiabilities,
                 totalEquity,
-                totalAssets.compareTo(totalLiabilities.add(totalEquity)) == 0
-        );
+                totalLiabilitiesAndEquity
+        ));
     }
 
-    private List<BalanceSheetResponse.BalanceSheetSectionDTO> buildHierarchy(List<AccountBalanceDTO> accounts, AccountType type) {
-        List<BalanceSheetResponse.BalanceSheetSectionDTO> result = new ArrayList<>();
-
-        for (AccountBalanceDTO account : accounts) {
-            if (type == AccountType.ASSET && account.getAccountType() != AccountType.ASSET) continue;
-            if (type == AccountType.LIABILITY && account.getAccountType() != AccountType.LIABILITY) continue;
-            if (type == AccountType.EQUITY && account.getAccountType() != AccountType.EQUITY) continue;
-
-            BalanceSheetResponse.BalanceSheetSectionDTO section = new BalanceSheetResponse.BalanceSheetSectionDTO(
-                    account.code(),
-                    account.name(),
-                    BalanceSheetResponse.BalanceSheetSectionDTO.AccountType.valueOf(type.name()),
-                    account.getBalance(),
-                    List.of()
-            );
-            result.add(section);
+    public record BalanceSheet(
+            FiscalPeriod fiscalPeriod,
+            List<BalanceSheetLine> assets,
+            List<BalanceSheetLine> liabilities,
+            List<BalanceSheetLine> equity,
+            BigDecimal totalAssets,
+            BigDecimal totalLiabilities,
+            BigDecimal totalEquity,
+            BigDecimal totalLiabilitiesAndEquity
+    ) {
+        public boolean isBalanced() {
+            return totalAssets.compareTo(totalLiabilitiesAndEquity) == 0;
         }
+    }
 
-        return result.stream()
-                .sorted(Comparator.comparing(BalanceSheetResponse.BalanceSheetSectionDTO::code))
-                .collect(Collectors.toList());
+    public record BalanceSheetLine(
+            String accountCode,
+            String accountName,
+            BigDecimal amount
+    ) {}
+
+    public sealed interface Result permits Result.Success, Result.Failure {
+        boolean isSuccess();
+        static Success success(BalanceSheet balanceSheet) { return new Success(balanceSheet); }
+        static Failure failure(String message) { return new Failure(message); }
+
+        record Success(BalanceSheet balanceSheet) implements Result {
+            @Override public boolean isSuccess() { return true; }
+        }
+        record Failure(String message) implements Result {
+            @Override public boolean isSuccess() { return false; }
+        }
     }
 }

@@ -15,9 +15,9 @@ import java.util.UUID;
 
 public interface BankStatementLineRepository extends JpaRepository<BankStatementLine, UUID> {
 
-    List<BankStatementLine> findByBankStatementOrderByLineNumber(BankStatement bankStatement);
+    List<BankStatementLine> findByStatementOrderByLineNumber(BankStatement statement);
 
-    List<BankStatementLine> findByBankStatementAndStatus(BankStatement bankStatement, BankStatementLineStatus status);
+    List<BankStatementLine> findByStatementAndStatus(BankStatement statement, BankStatementLineStatus status);
 
     List<BankStatementLine> findByReconciliation(Reconciliation reconciliation);
 
@@ -27,9 +27,9 @@ public interface BankStatementLineRepository extends JpaRepository<BankStatement
 
     List<BankStatementLine> findByTransactionDateBetween(LocalDate startDate, LocalDate endDate);
 
-    Optional<BankStatementLine> findByBankStatementAndLineNumber(BankStatement bankStatement, Integer lineNumber);
+    Optional<BankStatementLine> findByStatementAndLineNumber(BankStatement statement, Integer lineNumber);
 
-    Page<BankStatementLine> findByBankStatement(BankStatement bankStatement, Pageable pageable);
+    Page<BankStatementLine> findByStatement(BankStatement statement, Pageable pageable);
 
     Page<BankStatementLine> findByStatus(BankStatementLineStatus status, Pageable pageable);
 

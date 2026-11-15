@@ -119,7 +119,7 @@ public class RunDepreciationUseCase {
 
             AssetDepreciationPostedEvent event = new AssetDepreciationPostedEvent(
                     UUID.randomUUID(),
-                    processedSchedules.get(0).getAsset().getAccount().getId(), // reference
+                    processedSchedules.get(0).getAsset().getAccount().getId(),
                     "DEPR-" + periodEndDate,
                     periodEndDate,
                     processedSchedules.get(0).getAsset().getAccount().getFiscalYear().getPeriods().get(0).getId(),

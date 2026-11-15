@@ -5,6 +5,8 @@ public enum BankStatementStatus {
     PROCESSING("Processing"),
     MATCHED("Matched"),
     PARTIALLY_MATCHED("Partially Matched"),
+    RECONCILED("Reconciled"),
+    CLOSED("Closed"),
     ERROR("Error");
 
     private final String description;

@@ -12,11 +12,13 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "receivable_invoices", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_receivable_invoice_customer_number", columnNames = {"customer_id", "invoice_number", "invoice_series"})
+    @UniqueConstraint(name = "uk_receivable_invoice_customer_number_series", columnNames = {"customer_id", "number", "series"})
 }, indexes = {
+    @Index(name = "idx_receivable_invoice_company", columnList = "company_id"),
     @Index(name = "idx_receivable_invoice_customer", columnList = "customer_id"),
     @Index(name = "idx_receivable_invoice_due_date", columnList = "due_date"),
     @Index(name = "idx_receivable_invoice_status", columnList = "status"),
+    @Index(name = "idx_receivable_invoice_access_key", columnList = "access_key"),
     @Index(name = "idx_receivable_invoice_fiscal_period", columnList = "fiscal_period_id")
 })
 public class ReceivableInvoice {
@@ -27,22 +29,26 @@ public class ReceivableInvoice {
     private UUID id;
 
     @NotNull
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
     @NotBlank
     @Size(max = 50)
-    @Column(name = "invoice_number", nullable = false, length = 50)
-    private String invoiceNumber;
+    @Column(name = "number", nullable = false, length = 50)
+    private String number;
 
     @Size(max = 10)
-    @Column(name = "invoice_series", length = 10)
-    private String invoiceSeries;
+    @Column(name = "series", length = 10)
+    private String series;
 
     @NotNull
-    @Column(name = "invoice_date", nullable = false)
-    private LocalDate invoiceDate;
+    @Column(name = "issue_date", nullable = false)
+    private LocalDate issueDate;
 
     @NotNull
     @Column(name = "due_date", nullable = false)
@@ -66,8 +72,8 @@ public class ReceivableInvoice {
     @Column(name = "received_amount", precision = 19, scale = 2)
     private BigDecimal receivedAmount = BigDecimal.ZERO;
 
-    @Column(name = "outstanding_amount", precision = 19, scale = 2)
-    private BigDecimal outstandingAmount;
+    @Column(name = "balance_amount", precision = 19, scale = 2)
+    private BigDecimal balanceAmount;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
@@ -94,17 +100,35 @@ public class ReceivableInvoice {
     @Column(name = "approved_by", length = 200)
     private String approvedBy;
 
-    @Size(max = 1000)
-    @Column(name = "description", length = 1000)
-    private String description;
+    @Size(max = 500)
+    @Column(name = "xml_path", length = 500)
+    private String xmlPath;
+
+    @Size(max = 100)
+    @Column(name = "access_key", length = 100)
+    private String accessKey;
+
+    @Column(name = "sales_order_id")
+    private UUID salesOrderId;
 
     @Size(max = 50)
     @Column(name = "sales_order_number", length = 50)
     private String salesOrderNumber;
 
+    @Column(name = "delivery_note_id")
+    private UUID deliveryNoteId;
+
     @Size(max = 50)
     @Column(name = "delivery_note_number", length = 50)
     private String deliveryNoteNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_term_id")
+    private PaymentTerm paymentTerm;
+
+    @Size(max = 1000)
+    @Column(name = "description", length = 1000)
+    private String description;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -123,32 +147,37 @@ public class ReceivableInvoice {
         this.createdAt = LocalDateTime.now();
     }
 
-    public ReceivableInvoice(Customer customer, String invoiceNumber, LocalDate invoiceDate, LocalDate dueDate,
-                             FiscalPeriod fiscalPeriod, BigDecimal totalAmount, Currency currency,
-                             ChartOfAccounts receivableAccount) {
+    public ReceivableInvoice(UUID companyId, Customer customer, String number, String series,
+                             LocalDate issueDate, LocalDate dueDate,
+                             FiscalPeriod fiscalPeriod, BigDecimal totalAmount,
+                             Currency currency, ChartOfAccounts receivableAccount) {
         this();
+        this.companyId = companyId;
         this.customer = customer;
-        this.invoiceNumber = invoiceNumber;
-        this.invoiceDate = invoiceDate;
+        this.number = number;
+        this.series = series;
+        this.issueDate = issueDate;
         this.dueDate = dueDate;
         this.fiscalPeriod = fiscalPeriod;
         this.totalAmount = totalAmount;
         this.currency = currency;
         this.receivableAccount = receivableAccount;
-        this.outstandingAmount = totalAmount;
+        this.balanceAmount = totalAmount;
     }
 
     // Getters and Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+    public UUID getCompanyId() { return companyId; }
+    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
     public Customer getCustomer() { return customer; }
     public void setCustomer(Customer customer) { this.customer = customer; }
-    public String getInvoiceNumber() { return invoiceNumber; }
-    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
-    public String getInvoiceSeries() { return invoiceSeries; }
-    public void setInvoiceSeries(String invoiceSeries) { this.invoiceSeries = invoiceSeries; }
-    public LocalDate getInvoiceDate() { return invoiceDate; }
-    public void setInvoiceDate(LocalDate invoiceDate) { this.invoiceDate = invoiceDate; }
+    public String getNumber() { return number; }
+    public void setNumber(String number) { this.number = number; }
+    public String getSeries() { return series; }
+    public void setSeries(String series) { this.series = series; }
+    public LocalDate getIssueDate() { return issueDate; }
+    public void setIssueDate(LocalDate issueDate) { this.issueDate = issueDate; }
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
     public FiscalPeriod getFiscalPeriod() { return fiscalPeriod; }
@@ -161,8 +190,8 @@ public class ReceivableInvoice {
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public BigDecimal getReceivedAmount() { return receivedAmount; }
     public void setReceivedAmount(BigDecimal receivedAmount) { this.receivedAmount = receivedAmount; }
-    public BigDecimal getOutstandingAmount() { return outstandingAmount; }
-    public void setOutstandingAmount(BigDecimal outstandingAmount) { this.outstandingAmount = outstandingAmount; }
+    public BigDecimal getBalanceAmount() { return balanceAmount; }
+    public void setBalanceAmount(BigDecimal balanceAmount) { this.balanceAmount = balanceAmount; }
     public Currency getCurrency() { return currency; }
     public void setCurrency(Currency currency) { this.currency = currency; }
     public BigDecimal getExchangeRate() { return exchangeRate; }
@@ -175,12 +204,22 @@ public class ReceivableInvoice {
     public void setApprovalDate(LocalDate approvalDate) { this.approvalDate = approvalDate; }
     public String getApprovedBy() { return approvedBy; }
     public void setApprovedBy(String approvedBy) { this.approvedBy = approvedBy; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public String getXmlPath() { return xmlPath; }
+    public void setXmlPath(String xmlPath) { this.xmlPath = xmlPath; }
+    public String getAccessKey() { return accessKey; }
+    public void setAccessKey(String accessKey) { this.accessKey = accessKey; }
+    public UUID getSalesOrderId() { return salesOrderId; }
+    public void setSalesOrderId(UUID salesOrderId) { this.salesOrderId = salesOrderId; }
     public String getSalesOrderNumber() { return salesOrderNumber; }
     public void setSalesOrderNumber(String salesOrderNumber) { this.salesOrderNumber = salesOrderNumber; }
+    public UUID getDeliveryNoteId() { return deliveryNoteId; }
+    public void setDeliveryNoteId(UUID deliveryNoteId) { this.deliveryNoteId = deliveryNoteId; }
     public String getDeliveryNoteNumber() { return deliveryNoteNumber; }
     public void setDeliveryNoteNumber(String deliveryNoteNumber) { this.deliveryNoteNumber = deliveryNoteNumber; }
+    public PaymentTerm getPaymentTerm() { return paymentTerm; }
+    public void setPaymentTerm(PaymentTerm paymentTerm) { this.paymentTerm = paymentTerm; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
@@ -193,15 +232,16 @@ public class ReceivableInvoice {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+        this.balanceAmount = this.totalAmount.subtract(this.receivedAmount);
     }
 
-    public void recalculateOutstanding() {
-        this.outstandingAmount = this.totalAmount.subtract(this.receivedAmount);
-        if (this.outstandingAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            this.status = InvoiceStatus.PAID;
-            this.outstandingAmount = BigDecimal.ZERO;
-        } else if (this.receivedAmount.compareTo(BigDecimal.ZERO) > 0) {
-            this.status = InvoiceStatus.PARTIALLY_PAID;
-        }
-    }
+    // Aliases for controller compatibility
+    public String getInvoiceNumber() { return getNumber(); }
+    public void setInvoiceNumber(String invoiceNumber) { setNumber(invoiceNumber); }
+    public String getInvoiceSeries() { return getSeries(); }
+    public void setInvoiceSeries(String invoiceSeries) { setSeries(invoiceSeries); }
+    public LocalDate getInvoiceDate() { return getIssueDate(); }
+    public void setInvoiceDate(LocalDate invoiceDate) { setIssueDate(invoiceDate); }
+    public BigDecimal getOutstandingAmount() { return getBalanceAmount(); }
+    public void setOutstandingAmount(BigDecimal outstandingAmount) { setBalanceAmount(outstandingAmount); }
 }

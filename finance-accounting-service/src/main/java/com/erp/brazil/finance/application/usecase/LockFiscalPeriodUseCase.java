@@ -1,91 +1,101 @@
 package com.erp.brazil.finance.application.usecase;
 
-import com.erp.brazil.finance.application.dto.FiscalPeriodDTO;
-import com.erp.brazil.finance.application.dto.LockFiscalPeriodRequest;
-import com.erp.brazil.finance.application.event.FiscalPeriodLockedEvent;
+import com.erp.brazil.finance.domain.event.FiscalPeriodLockedEvent;
 import com.erp.brazil.finance.domain.model.FiscalPeriod;
+import com.erp.brazil.finance.domain.model.JournalEntry;
 import com.erp.brazil.finance.domain.model.JournalEntryStatus;
 import com.erp.brazil.finance.domain.repository.FiscalPeriodRepository;
 import com.erp.brazil.finance.domain.repository.JournalEntryRepository;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import java.time.LocalDate;
+import java.util.List;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-@Service
-@Transactional
+@ApplicationScoped
 public class LockFiscalPeriodUseCase {
 
     private final FiscalPeriodRepository fiscalPeriodRepository;
     private final JournalEntryRepository journalEntryRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final EventPublisher eventPublisher;
 
+    @Inject
     public LockFiscalPeriodUseCase(FiscalPeriodRepository fiscalPeriodRepository,
                                    JournalEntryRepository journalEntryRepository,
-                                   RabbitTemplate rabbitTemplate) {
+                                   EventPublisher eventPublisher) {
         this.fiscalPeriodRepository = fiscalPeriodRepository;
         this.journalEntryRepository = journalEntryRepository;
-        this.rabbitTemplate = rabbitTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
-    public FiscalPeriodDTO execute(UUID fiscalPeriodId, LockFiscalPeriodRequest request, String lockedBy) {
+    @Transactional
+    public Result execute(UUID fiscalPeriodId, String lockedBy) {
         FiscalPeriod fiscalPeriod = fiscalPeriodRepository.findById(fiscalPeriodId)
                 .orElseThrow(() -> new IllegalArgumentException("Fiscal period not found: " + fiscalPeriodId));
 
-        if (fiscalPeriod.isLocked()) {
-            throw new IllegalStateException("Fiscal period is already locked");
+        return switch (fiscalPeriod) {
+            case FiscalPeriod p when p.isLocked() -> Result.failure("Fiscal period already locked");
+            case FiscalPeriod p when p.isClosed() -> Result.failure("Fiscal period already closed");
+            case FiscalPeriod p -> lockPeriod(p, lockedBy);
+        };
+    }
+
+    private Result lockPeriod(FiscalPeriod fiscalPeriod, String lockedBy) {
+        // Check for unposted journal entries
+        List<JournalEntry> unpostedEntries = journalEntryRepository.findByFiscalPeriodAndStatusInOrderByEntryDateDesc(
+                fiscalPeriod, List.of(JournalEntryStatus.DRAFT));
+
+        if (!unpostedEntries.isEmpty()) {
+            return Result.failure("Cannot lock period: " + unpostedEntries.size() + " draft journal entries exist");
+        }
+
+        // Lock the period
+        fiscalPeriod.setLocked(true);
+        fiscalPeriod.setLockedAt(LocalDate.now());
+        fiscalPeriod.setLockedBy(lockedBy);
+        fiscalPeriod = fiscalPeriodRepository.save(fiscalPeriod);
+
+        // Publish event
+        eventPublisher.publish(FiscalPeriodLockedEvent.from(fiscalPeriod));
+
+        return Result.success(fiscalPeriod);
+    }
+
+    @Transactional
+    public Result unlock(UUID fiscalPeriodId, String unlockedBy) {
+        FiscalPeriod fiscalPeriod = fiscalPeriodRepository.findById(fiscalPeriodId)
+                .orElseThrow(() -> new IllegalArgumentException("Fiscal period not found: " + fiscalPeriodId));
+
+        if (!fiscalPeriod.isLocked()) {
+            return Result.failure("Fiscal period is not locked");
         }
 
         if (fiscalPeriod.isClosed()) {
-            throw new IllegalStateException("Cannot lock a closed fiscal period");
+            return Result.failure("Cannot unlock a closed period");
         }
 
-        long unpostedCount = journalEntryRepository.countByFiscalPeriodAndStatus(fiscalPeriod, JournalEntryStatus.DRAFT);
-        if (unpostedCount > 0) {
-            throw new IllegalStateException("Cannot lock fiscal period with " + unpostedCount + " unposted (draft) journal entries");
+        fiscalPeriod.setLocked(false);
+        fiscalPeriod.setLockedAt(null);
+        fiscalPeriod.setLockedBy(null);
+        fiscalPeriod = fiscalPeriodRepository.save(fiscalPeriod);
+
+        return Result.success(fiscalPeriod);
+    }
+
+    public sealed interface Result permits Result.Success, Result.Failure {
+        boolean isSuccess();
+        static Success success(FiscalPeriod fiscalPeriod) { return new Success(fiscalPeriod); }
+        static Failure failure(String message) { return new Failure(message); }
+
+        record Success(FiscalPeriod fiscalPeriod) implements Result {
+            @Override public boolean isSuccess() { return true; }
         }
-
-        fiscalPeriod.setLocked(true);
-        fiscalPeriod.setLockedAt(request.lockDate());
-        fiscalPeriod.setLockedBy(lockedBy);
-
-        fiscalPeriodRepository.save(fiscalPeriod);
-
-        publishEvent(fiscalPeriod, request.lockDate(), lockedBy);
-
-        return toDTO(fiscalPeriod);
+        record Failure(String message) implements Result {
+            @Override public boolean isSuccess() { return false; }
+        }
     }
 
-    private void publishEvent(FiscalPeriod fiscalPeriod, java.time.LocalDate lockDate, String lockedBy) {
-        FiscalPeriodLockedEvent event = new FiscalPeriodLockedEvent(
-                UUID.randomUUID(),
-                fiscalPeriod.getId(),
-                fiscalPeriod.getFiscalYear().getYear(),
-                fiscalPeriod.getPeriodNumber(),
-                lockDate,
-                lockedBy,
-                LocalDateTime.now()
-        );
-
-        rabbitTemplate.convertAndSend("finance.exchange", "fiscal.period.locked", event);
-    }
-
-    private FiscalPeriodDTO toDTO(FiscalPeriod fiscalPeriod) {
-        return new FiscalPeriodDTO(
-                fiscalPeriod.getId(),
-                fiscalPeriod.getFiscalYear().getId(),
-                fiscalPeriod.getFiscalYear().getYear(),
-                fiscalPeriod.getPeriodNumber(),
-                fiscalPeriod.getName(),
-                fiscalPeriod.getStartDate(),
-                fiscalPeriod.getEndDate(),
-                fiscalPeriod.isLocked(),
-                fiscalPeriod.getLockedAt(),
-                fiscalPeriod.getLockedBy(),
-                fiscalPeriod.isClosed(),
-                fiscalPeriod.getClosedAt()
-        );
+    interface EventPublisher {
+        void publish(FiscalPeriodLockedEvent event);
     }
 }

@@ -1,0 +1,139 @@
+spring:
+  application:
+    name: finance-accounting-service
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/erp_finance?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DATABASE_USERNAME:root}
+    password: ${DATABASE_PASSWORD:}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: UTC
+        generate_statistics: false
+        order_inserts: true
+        order_updates: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: false
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 5
+        max-concurrency: 20
+        prefetch: 10
+
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: embedded
+    properties:
+      org.quartz.scheduler.instanceName: FinanceScheduler
+      org.quartz.scheduler.instanceId: AUTO
+      org.quartz.threadPool.threadCount: 10
+      org.quartz.jobStore.class: org.quartz.impl.jdbcjobstore.JobStoreTX
+      org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+      org.quartz.jobStore.tablePrefix: QRTZ_
+      org.quartz.jobStore.isClustered: true
+      org.quartz.jobStore.clusterCheckinInterval: 20000
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OAUTH2_ISSUER_URI:http://localhost:8081/realms/erp}
+          jwk-set-uri: ${OAUTH2_JWK_SET_URI:http://localhost:8081/realms/erp/protocol/openid-connect/certs}
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,flyway,quartz
+    jmx:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.erp.brazil.finance: DEBUG
+    org.springframework.amqp: DEBUG
+    org.flywaydb: INFO
+    org.quartz: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+app:
+  finance:
+    default-currency: BRL
+    decimal-places: 2
+    fiscal-year-start-month: 1
+    fiscal-year-start-day: 1
+  messaging:
+    exchange: erp.events
+    routing-key:
+      journal-entry-posted: journal.entry.posted
+      payment-processed: payment.processed
+      fiscal-period-locked: fiscal.period.locked
+      asset-depreciation-posted: asset.depreciation.posted
+    queue:
+      invoice-validated: erp.finance.invoice-validated
+      goods-received: erp.finance.goods-received
+      purchase-order-approved: erp.finance.purchase-order-approved
