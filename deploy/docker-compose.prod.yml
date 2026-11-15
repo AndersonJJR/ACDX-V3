@@ -1,565 +1,409 @@
-version: '3.8'
+version: '3.9'
+
+# ERP Brazil - Production Infrastructure
+# Run with: docker-compose -f deploy/docker-compose.prod.yml --env-file .env up -d
 
 services:
-  # ===========================================
-  # DATABASE SERVICES (Production)
-  # ===========================================
-  
+  # ============================================
+  # MySQL 8.4 Database (Production)
+  # ============================================
   mysql:
     image: mysql:8.4
     container_name: erp-mysql-prod
     environment:
-      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-erp_brazil}
-      MYSQL_USER: ${MYSQL_USER:-erp_user}
-      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+      - "127.0.0.1:3306:3306"  # Bind to localhost only
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./mysql/conf.d:/etc/mysql/conf.d
+      - ./mysql/init-prod:/docker-entrypoint-initdb.d
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --max-connections=500
+      - --innodb-buffer-pool-size=2G
+      - --innodb-log-file-size=256M
+      - --innodb-flush-log-at-trx-commit=1
+      - --sync-binlog=1
+      - --binlog-format=ROW
+      - --slow-query-log=1
+      - --slow-query-log-file=/var/log/mysql/slow.log
+      - --long-query-time=2
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 60s
     networks:
-      - erp-network-prod
+      - erp-network
     deploy:
       resources:
         limits:
           memory: 4G
-          cpus: '2.0'
         reservations:
           memory: 2G
-          cpus: '1.0'
-    restart: unless-stopped
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
 
+  # ============================================
+  # MongoDB 7.0 (Production - Replica Set)
+  # ============================================
   mongodb:
     image: mongo:7.0
     container_name: erp-mongodb-prod
     environment:
-      MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongo_root_user
-      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo_root_password
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-erp_brazil}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+      MONGO_REPLICA_SET_NAME: rs0
     ports:
-      - "127.0.0.1:${MONGO_PORT:-27017}:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
-      - mongo_data:/data/db
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./mongodb/init:/docker-entrypoint-initdb.d
+    command:
+      - --replSet
+      - rs0
+      - --wiredTigerCacheSizeGB=2
+      - --maxConns=500
+      - --oplogSize=1024
+      - --bind_ip_all
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 60s
     networks:
-      - erp-network-prod
+      - erp-network
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: '1.0'
+          memory: 4G
         reservations:
-          memory: 1G
-          cpus: '0.5'
-    restart: unless-stopped
+          memory: 2G
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
 
+  # ============================================
+  # Redis 7 (Production - Cluster Mode)
+  # ============================================
   redis:
     image: redis:7-alpine
     container_name: erp-redis-prod
-    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru --requirepass-file /run/secrets/redis_password
     ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
+      - ./redis/redis-prod.conf:/usr/local/etc/redis/redis.conf
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --maxmemory 2gb
+      - --maxmemory-policy allkeys-lru
+      - --appendonly yes
+      - --appendfsync everysec
+      - --save 900 1
+      - --save 300 10
+      - --save 60 10000
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "$$REDIS_PASSWORD", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 30s
-      timeout: 10s
-      retries: 3
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
-      - erp-network-prod
+      - erp-network
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '0.5'
+          memory: 3G
         reservations:
-          memory: 512M
-          cpus: '0.25'
-    restart: unless-stopped
+          memory: 1G
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
+  # ============================================
+  # RabbitMQ 3.13 (Production - Cluster)
+  # ============================================
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: erp-rabbitmq-prod
     environment:
-      RABBITMQ_DEFAULT_USER_FILE: /run/secrets/rabbitmq_user
-      RABBITMQ_DEFAULT_PASS_FILE: /run/secrets/rabbitmq_password
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
     ports:
-      - "127.0.0.1:${RABBITMQ_AMQP_PORT:-5672}:5672"
-      - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./rabbitmq/rabbitmq-prod.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     healthcheck:
-      test: rabbitmq-diagnostics -q ping
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 60s
     networks:
-      - erp-network-prod
+      - erp-network
     deploy:
       resources:
         limits:
           memory: 2G
-          cpus: '1.0'
         reservations:
           memory: 1G
-          cpus: '0.5'
-    restart: unless-stopped
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
 
-  # ===========================================
-  # MICROSERVICES (Production)
-  # ===========================================
-
-  api-gateway:
-    build:
-      context: ../api-gateway
-      dockerfile: Dockerfile.prod
-    container_name: erp-api-gateway-prod
+  # ============================================
+  # MinIO (S3-compatible Object Storage)
+  # ============================================
+  minio:
+    image: minio/minio:latest
+    container_name: erp-minio-prod
+    command: server /data --console-address ":9001"
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: ${GATEWAY_PORT:-8080}
-      SPRING_CLOUD_CONFIG_URI: ${CONFIG_SERVER_URI:-}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URI:-}
-      GATEWAY_CORS_ALLOWED_ORIGINS: ${FRONTEND_URL:-https://erp.brazil.com}
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     ports:
-      - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - erp-network-prod
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 3
-    restart: unless-stopped
-
-  identity-tenant-service:
-    build:
-      context: ../identity-tenant-service
-      dockerfile: Dockerfile.prod
-    container_name: erp-identity-tenant-service-prod
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: ${IDENTITY_PORT:-8081}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-erp_brazil}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-erp_user}
-      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/mysql_password
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER_FILE:-/run/secrets/mongo_root_user}:${MONGO_ROOT_PASSWORD_FILE:-/run/secrets/mongo_root_password}@mongodb:27017/${MONGO_DATABASE:-erp_brazil}?authSource=admin
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD_FILE: /run/secrets/redis_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME_FILE: /run/secrets/rabbitmq_user
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-      JWT_ISSUER: ${JWT_ISSUER:-erp-brazil}
-    ports:
-      - "127.0.0.1:${IDENTITY_PORT:-8081}:8081"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - erp-network-prod
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 3
-    restart: unless-stopped
-
-  finance-accounting-service:
-    build:
-      context: ../finance-accounting-service
-      dockerfile: Dockerfile.prod
-    container_name: erp-finance-accounting-service-prod
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: ${FINANCE_PORT:-8082}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-erp_brazil}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-erp_user}
-      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/mysql_password
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER_FILE:-/run/secrets/mongo_root_user}:${MONGO_ROOT_PASSWORD_FILE:-/run/secrets/mongo_root_password}@mongodb:27017/${MONGO_DATABASE:-erp_brazil}?authSource=admin
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD_FILE: /run/secrets/redis_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME_FILE: /run/secrets/rabbitmq_user
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - erp-network-prod
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 3
-    restart: unless-stopped
-
-  fiscal-brazil-service:
-    build:
-      context: ../fiscal-brazil-service
-      dockerfile: Dockerfile.prod
-    container_name: erp-fiscal-brazil-service-prod
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: ${FISCAL_PORT:-8083}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-erp_brazil}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-erp_user}
-      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/mysql_password
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER_FILE:-/run/secrets/mongo_root_user}:${MONGO_ROOT_PASSWORD_FILE:-/run/secrets/mongo_root_password}@mongodb:27017/${MONGO_DATABASE:-erp_brazil}?authSource=admin
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD_FILE: /run/secrets/redis_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME_FILE: /run/secrets/rabbitmq_user
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-      CERTIFICADO_A1_PATH: ${CERTIFICADO_A1_PATH:-/certs/certificado.pfx}
-      CERTIFICADO_A1_PASSWORD_FILE: /run/secrets/certificado_a1_password
-      SEFAZ_ENVIRONMENT: ${SEFAZ_ENVIRONMENT:-producao}
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
-      - ./certs:/certs:ro
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
     networks:
-      - erp-network-prod
+      - erp-network
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
           memory: 1G
-          cpus: '0.5'
-      replicas: 2
+        reservations:
+          memory: 512M
       restart_policy:
         condition: on-failure
         delay: 10s
         max_attempts: 3
-    restart: unless-stopped
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
-  hr-audit-service:
-    build:
-      context: ../hr-audit-service
-      dockerfile: Dockerfile.prod
-    container_name: erp-hr-audit-service-prod
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: ${HR_PORT:-8084}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-erp_brazil}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-erp_user}
-      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/mysql_password
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER_FILE:-/run/secrets/mongo_root_user}:${MONGO_ROOT_PASSWORD_FILE:-/run/secrets/mongo_root_password}@mongodb:27017/${MONGO_DATABASE:-erp_brazil}?authSource=admin
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD_FILE: /run/secrets/redis_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME_FILE: /run/secrets/rabbitmq_user
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
-      MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_USERNAME_FILE: /run/secrets/mail_username
-      MAIL_PASSWORD_FILE: /run/secrets/mail_password
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - erp-network-prod
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 3
-    restart: unless-stopped
-
-  inventory-supply-service:
-    build:
-      context: ../inventory-supply-service
-      dockerfile: Dockerfile.prod
-    container_name: erp-inventory-supply-service-prod
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: ${INVENTORY_PORT:-8085}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-erp_brazil}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-erp_user}
-      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/mysql_password
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER_FILE:-/run/secrets/mongo_root_user}:${MONGO_ROOT_PASSWORD_FILE:-/run/secrets/mongo_root_password}@mongodb:27017/${MONGO_DATABASE:-erp_brazil}?authSource=admin
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD_FILE: /run/secrets/redis_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME_FILE: /run/secrets/rabbitmq_user
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - erp-network-prod
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 3
-    restart: unless-stopped
-
-  manufacturing-projects-service:
-    build:
-      context: ../manufacturing-projects-service
-      dockerfile: Dockerfile.prod
-    container_name: erp-manufacturing-projects-service-prod
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: ${MANUFACTURING_PORT:-8086}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-erp_brazil}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-erp_user}
-      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/mysql_password
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER_FILE:-/run/secrets/mongo_root_user}:${MONGO_ROOT_PASSWORD_FILE:-/run/secrets/mongo_root_password}@mongodb:27017/${MONGO_DATABASE:-erp_brazil}?authSource=admin
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD_FILE: /run/secrets/redis_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME_FILE: /run/secrets/rabbitmq_user
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - erp-network-prod
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 3
-    restart: unless-stopped
-
-  sales-crm-service:
-    build:
-      context: ../sales-crm-service
-      dockerfile: Dockerfile.prod
-    container_name: erp-sales-crm-service-prod
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: ${SALES_PORT:-8087}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-erp_brazil}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-erp_user}
-      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/mysql_password
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER_FILE:-/run/secrets/mongo_root_user}:${MONGO_ROOT_PASSWORD_FILE:-/run/secrets/mongo_root_password}@mongodb:27017/${MONGO_DATABASE:-erp_brazil}?authSource=admin
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD_FILE: /run/secrets/redis_password
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME_FILE: /run/secrets/rabbitmq_user
-      SPRING_RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - erp-network-prod
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 3
-    restart: unless-stopped
-
-  # ===========================================
-  # FRONTEND (Production - Nginx)
-  # ===========================================
-
-  erp-frontend:
-    build:
-      context: ../erp-frontend-web
-      dockerfile: Dockerfile.prod
-    container_name: erp-frontend-prod
+  # ============================================
+  # Prometheus (Metrics)
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.50
+    container_name: erp-prometheus-prod
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'
     ports:
-      - "127.0.0.1:80:80"
-      - "127.0.0.1:443:443"
-    depends_on:
-      - api-gateway
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
     networks:
-      - erp-network-prod
+      - erp-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================
+  # Grafana (Visualization)
+  # ============================================
+  grafana:
+    image: grafana/grafana:10.2
+    container_name: erp-grafana-prod
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/home.json
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - erp-network
     deploy:
       resources:
         limits:
           memory: 512M
-          cpus: '0.25'
         reservations:
           memory: 256M
-          cpus: '0.1'
-      replicas: 2
       restart_policy:
         condition: on-failure
-        delay: 5s
+        delay: 10s
         max_attempts: 3
-    restart: unless-stopped
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================
+  # Jaeger (Distributed Tracing)
+  # ============================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: erp-jaeger-prod
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: false
+      BADGER_DIRECTORY_VALUE: /data/badger
+    ports:
+      - "127.0.0.1:16686:16686"
+      - "127.0.0.1:6831:6831/udp"
+      - "127.0.0.1:14268:14268"
+      - "127.0.0.1:4317:4317"
+    volumes:
+      - jaeger_data:/data
+    networks:
+      - erp-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================
+  # Nginx Reverse Proxy (SSL Termination)
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: erp-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx
+    networks:
+      - erp-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
 networks:
-  erp-network-prod:
+  erp-network:
     driver: bridge
-    internal: false
+    name: erp-network-prod
 
 volumes:
   mysql_data:
-  mongo_data:
+    name: erp-mysql-prod-data
+  mongodb_data:
+    name: erp-mongodb-prod-data
+  mongodb_config:
+    name: erp-mongodb-prod-config
   redis_data:
+    name: erp-redis-prod-data
   rabbitmq_data:
-
-secrets:
-  mysql_root_password:
-    external: true
-  mysql_password:
-    external: true
-  mongo_root_user:
-    external: true
-  mongo_root_password:
-    external: true
-  redis_password:
-    external: true
-  rabbitmq_user:
-    external: true
-  rabbitmq_password:
-    external: true
-  jwt_secret:
-    external: true
-  certificado_a1_password:
-    external: true
-  mail_username:
-    external: true
-  mail_password:
-    external: true
+    name: erp-rabbitmq-prod-data
+  minio_data:
+    name: erp-minio-prod-data
+  prometheus_data:
+    name: erp-prometheus-prod-data
+  grafana_data:
+    name: erp-grafana-prod-data
+  jaeger_data:
+    name: erp-jaeger-prod-data
+  nginx_cache:
+    name: erp-nginx-prod-cache
