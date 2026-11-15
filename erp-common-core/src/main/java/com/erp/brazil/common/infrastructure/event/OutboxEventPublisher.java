@@ -6,7 +6,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -118,7 +122,17 @@ public class OutboxEventPublisher {
      */
     private void publishOutboxEvent(OutboxEvent outboxEvent) {
         String routingKey = buildRoutingKey(outboxEvent);
-        rabbitTemplate.send(exchangeName, routingKey, outboxEvent.getPayload().getBytes());
+        MessageProperties properties = new MessageProperties();
+        properties.setContentType("application/json");
+        properties.setContentEncoding(StandardCharsets.UTF_8.name());
+        properties.setMessageId(outboxEvent.getId().toString());
+        properties.setHeader("eventType", outboxEvent.getEventType());
+        properties.setHeader("aggregateType", outboxEvent.getAggregateType());
+        properties.setHeader("aggregateId", outboxEvent.getAggregateId());
+        properties.setHeader("tenantId", outboxEvent.getTenantId());
+
+        Message message = new Message(outboxEvent.getPayload().getBytes(StandardCharsets.UTF_8), properties);
+        rabbitTemplate.send(exchangeName, routingKey, message);
 
         outboxEvent.markPublished();
         entityManager.merge(outboxEvent);

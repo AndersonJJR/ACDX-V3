@@ -1,26 +1,35 @@
 package com.erp.brazil.manufacturing.domain.event;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class SubcontractingOrderSentEvent {
-
-    private UUID eventId = UUID.randomUUID();
-    private LocalDateTime timestamp = LocalDateTime.now();
-    private String eventType = "SubcontractingOrderSent";
-
+    private UUID eventId;
+    private LocalDateTime timestamp;
     private UUID subcontractingOrderId;
     private String orderNumber;
     private UUID vendorId;
-    private UUID productId;
-    private java.math.BigDecimal orderedQuantity;
-    private UUID warehouseId;
-    private LocalDateTime plannedEndDate;
-    private String sentBy;
+    private List<SentItemEvent> sentItems;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SentItemEvent {
+        private UUID componentId;
+        private BigDecimal sentQuantity;
+        private String unitOfMeasure;
+        private UUID fromWarehouseId;
+        private UUID toWarehouseId;
+    }
 }

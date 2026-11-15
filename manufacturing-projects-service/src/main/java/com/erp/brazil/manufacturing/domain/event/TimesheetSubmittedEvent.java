@@ -1,27 +1,29 @@
 package com.erp.brazil.manufacturing.domain.event;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class TimesheetSubmittedEvent {
-
-    private UUID eventId = UUID.randomUUID();
-    private LocalDateTime timestamp = LocalDateTime.now();
-    private String eventType = "TimesheetSubmitted";
-
+    private UUID eventId;
+    private LocalDateTime timestamp;
     private UUID timesheetId;
+    private UUID employeeId;
     private UUID projectId;
     private UUID taskId;
-    private UUID employeeId;
-    private java.time.LocalDate workDate;
-    private java.math.BigDecimal hoursWorked;
-    private Boolean isBillable;
-    private java.math.BigDecimal billingRate;
-    private String submittedBy;
+    private LocalDate workDate;
+    private BigDecimal hoursWorked;
+    private BigDecimal overtimeHours;
+    private boolean isBillable;
+    private String status;
 }

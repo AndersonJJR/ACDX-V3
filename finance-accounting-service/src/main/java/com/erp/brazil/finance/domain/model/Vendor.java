@@ -5,17 +5,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "vendors", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_vendor_document", columnNames = {"company_id", "document_type", "document_number"}),
-    @UniqueConstraint(name = "uk_vendor_code", columnNames = {"company_id", "code"})
+    @UniqueConstraint(name = "uk_vendor_code", columnNames = "code"),
+    @UniqueConstraint(name = "uk_vendor_document", columnNames = "document_number")
 }, indexes = {
-    @Index(name = "idx_vendor_company", columnList = "company_id"),
     @Index(name = "idx_vendor_name", columnList = "name"),
-    @Index(name = "idx_vendor_document_number", columnList = "document_number")
+    @Index(name = "idx_vendor_status", columnList = "status")
 })
 public class Vendor {
 
@@ -24,14 +22,19 @@ public class Vendor {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @NotNull
-    @Column(name = "company_id", nullable = false)
-    private UUID companyId;
-
     @NotBlank
     @Size(max = 20)
     @Column(name = "code", nullable = false, length = 20)
     private String code;
+
+    @NotBlank
+    @Size(max = 200)
+    @Column(name = "name", nullable = false, length = 200)
+    private String name;
+
+    @Size(max = 200)
+    @Column(name = "trade_name", length = 200)
+    private String tradeName;
 
     @NotNull
     @Enumerated(EnumType.STRING)
@@ -43,137 +46,162 @@ public class Vendor {
     @Column(name = "document_number", nullable = false, length = 20)
     private String documentNumber;
 
-    @NotBlank
-    @Size(max = 200)
-    @Column(name = "name", nullable = false, length = 200)
-    private String name;
+    @Size(max = 15)
+    @Column(name = "state_registration", length = 15)
+    private String stateRegistration;
 
-    @Size(max = 200)
-    @Column(name = "trade_name", length = 200)
-    private String tradeName;
-
-    @Size(max = 200)
-    @Column(name = "email", length = 200)
-    private String email;
-
-    @Size(max = 20)
-    @Column(name = "phone", length = 20)
-    private String phone;
+    @Size(max = 15)
+    @Column(name = "municipal_registration", length = 15)
+    private String municipalRegistration;
 
     @Size(max = 500)
     @Column(name = "address", length = 500)
     private String address;
 
     @Size(max = 100)
-    @Column(name = "pix_key", length = 100)
-    private String pixKey;
+    @Column(name = "city", length = 100)
+    private String city;
 
-    @Embedded
-    private BankAccountInfo bankAccount;
+    @Size(max = 2)
+    @Column(name = "state", length = 2)
+    private String state;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean active = true;
+    @Size(max = 10)
+    @Column(name = "zip_code", length = 10)
+    private String zipCode;
+
+    @Size(max = 2)
+    @Column(name = "country", length = 2)
+    private String country = "BR";
+
+    @Size(max = 100)
+    @Column(name = "email", length = 100)
+    private String email;
+
+    @Size(max = 20)
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Size(max = 200)
+    @Column(name = "contact_person", length = 200)
+    private String contactPerson;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_term_id")
+    private PaymentTerm paymentTerm;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_method_id")
+    private PaymentMethod paymentMethod;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "currency_id")
+    private Currency currency;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "default_payable_account_id")
+    private ChartOfAccounts defaultPayableAccount;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private VendorStatus status = VendorStatus.ACTIVE;
+
+    @Column(name = "credit_limit", precision = 19, scale = 2)
+    private java.math.BigDecimal creditLimit;
+
+    @Column(name = "current_balance", precision = 19, scale = 2)
+    private java.math.BigDecimal currentBalance = java.math.BigDecimal.ZERO;
+
+    @Column(name = "is_blocked", nullable = false)
+    private boolean blocked = false;
+
+    @Size(max = 500)
+    @Column(name = "block_reason", length = 500)
+    private String blockReason;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private LocalDate createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private LocalDate updatedAt;
 
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
 
     public Vendor() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDate.now();
     }
 
-    public Vendor(UUID companyId, String code, DocumentType documentType, String documentNumber, String name) {
+    public Vendor(String code, String name, DocumentType documentType, String documentNumber) {
         this();
-        this.companyId = companyId;
         this.code = code;
+        this.name = name;
         this.documentType = documentType;
         this.documentNumber = documentNumber;
-        this.name = name;
     }
 
     // Getters and Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public UUID getCompanyId() { return companyId; }
-    public void setCompanyId(UUID companyId) { this.companyId = companyId; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
-    public DocumentType getDocumentType() { return documentType; }
-    public void setDocumentType(DocumentType documentType) { this.documentType = documentType; }
-    public String getDocumentNumber() { return documentNumber; }
-    public void setDocumentNumber(String documentNumber) { this.documentNumber = documentNumber; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getTradeName() { return tradeName; }
     public void setTradeName(String tradeName) { this.tradeName = tradeName; }
+    public DocumentType getDocumentType() { return documentType; }
+    public void setDocumentType(DocumentType documentType) { this.documentType = documentType; }
+    public String getDocumentNumber() { return documentNumber; }
+    public void setDocumentNumber(String documentNumber) { this.documentNumber = documentNumber; }
+    public String getStateRegistration() { return stateRegistration; }
+    public void setStateRegistration(String stateRegistration) { this.stateRegistration = stateRegistration; }
+    public String getMunicipalRegistration() { return municipalRegistration; }
+    public void setMunicipalRegistration(String municipalRegistration) { this.municipalRegistration = municipalRegistration; }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+    public String getState() { return state; }
+    public void setState(String state) { this.state = state; }
+    public String getZipCode() { return zipCode; }
+    public void setZipCode(String zipCode) { this.zipCode = zipCode; }
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
-    public String getPixKey() { return pixKey; }
-    public void setPixKey(String pixKey) { this.pixKey = pixKey; }
-    public BankAccountInfo getBankAccount() { return bankAccount; }
-    public void setBankAccount(BankAccountInfo bankAccount) { this.bankAccount = bankAccount; }
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getContactPerson() { return contactPerson; }
+    public void setContactPerson(String contactPerson) { this.contactPerson = contactPerson; }
+    public PaymentTerm getPaymentTerm() { return paymentTerm; }
+    public void setPaymentTerm(PaymentTerm paymentTerm) { this.paymentTerm = paymentTerm; }
+    public PaymentMethod getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(PaymentMethod paymentMethod) { this.paymentMethod = paymentMethod; }
+    public Currency getCurrency() { return currency; }
+    public void setCurrency(Currency currency) { this.currency = currency; }
+    public ChartOfAccounts getDefaultPayableAccount() { return defaultPayableAccount; }
+    public void setDefaultPayableAccount(ChartOfAccounts defaultPayableAccount) { this.defaultPayableAccount = defaultPayableAccount; }
+    public VendorStatus getStatus() { return status; }
+    public void setStatus(VendorStatus status) { this.status = status; }
+    public java.math.BigDecimal getCreditLimit() { return creditLimit; }
+    public void setCreditLimit(java.math.BigDecimal creditLimit) { this.creditLimit = creditLimit; }
+    public java.math.BigDecimal getCurrentBalance() { return currentBalance; }
+    public void setCurrentBalance(java.math.BigDecimal currentBalance) { this.currentBalance = currentBalance; }
+    public boolean isBlocked() { return blocked; }
+    public void setBlocked(boolean blocked) { this.blocked = blocked; }
+    public String getBlockReason() { return blockReason; }
+    public void setBlockReason(String blockReason) { this.blockReason = blockReason; }
+    public LocalDate getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDate createdAt) { this.createdAt = createdAt; }
+    public LocalDate getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDate updatedAt) { this.updatedAt = updatedAt; }
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }
 
     @PreUpdate
     public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @Embeddable
-    public static class BankAccountInfo {
-        @Size(max = 10)
-        @Column(name = "bank_code", length = 10)
-        private String bankCode;
-
-        @Size(max = 20)
-        @Column(name = "agency", length = 20)
-        private String agency;
-
-        @Size(max = 10)
-        @Column(name = "agency_digit", length = 10)
-        private String agencyDigit;
-
-        @Size(max = 30)
-        @Column(name = "account_number", length = 30)
-        private String accountNumber;
-
-        @Size(max = 10)
-        @Column(name = "account_digit", length = 10)
-        private String accountDigit;
-
-        @Enumerated(EnumType.STRING)
-        @Column(name = "account_type", length = 20)
-        private BankAccountType accountType;
-
-        // Getters and Setters
-        public String getBankCode() { return bankCode; }
-        public void setBankCode(String bankCode) { this.bankCode = bankCode; }
-        public String getAgency() { return agency; }
-        public void setAgency(String agency) { this.agency = agency; }
-        public String getAgencyDigit() { return agencyDigit; }
-        public void setAgencyDigit(String agencyDigit) { this.agencyDigit = agencyDigit; }
-        public String getAccountNumber() { return accountNumber; }
-        public void setAccountNumber(String accountNumber) { this.accountNumber = accountNumber; }
-        public String getAccountDigit() { return accountDigit; }
-        public void setAccountDigit(String accountDigit) { this.accountDigit = accountDigit; }
-        public BankAccountType getAccountType() { return accountType; }
-        public void setAccountType(BankAccountType accountType) { this.accountType = accountType; }
+        this.updatedAt = LocalDate.now();
     }
 }

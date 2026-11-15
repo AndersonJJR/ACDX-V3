@@ -160,7 +160,7 @@ public class JwtTokenProvider {
         List<GrantedAuthority> authorities = Arrays.stream(authoritiesStr.split(","))
                 .filter(s -> !s.isEmpty())
                 .map(SimpleGrantedAuthority::new)
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
 
         JwtUserDetails userDetails = JwtUserDetails.builder()
                 .username(username)

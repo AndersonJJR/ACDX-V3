@@ -64,4 +64,7 @@ public interface StockLedgerEntryRepository extends JpaRepository<StockLedgerEnt
 
     @Query("SELECT sle FROM StockLedgerEntry sle WHERE sle.companyId = :companyId AND sle.itemId = :itemId AND sle.warehouseId = :warehouseId AND sle.valuationMethod = :method AND sle.isCancelled = false ORDER BY sle.postingDate ASC, sle.postingTime ASC")
     List<StockLedgerEntry> findByValuationMethod(@Param("companyId") UUID companyId, @Param("itemId") UUID itemId, @Param("warehouseId") UUID warehouseId, @Param("method") Item.ValuationMethod method);
+
+    @Query("SELECT DISTINCT sle.warehouseId FROM StockLedgerEntry sle WHERE sle.companyId = :companyId AND sle.itemId = :itemId")
+    List<UUID> findDistinctWarehouseIdsByCompanyAndItem(@Param("companyId") UUID companyId, @Param("itemId") UUID itemId);
 }

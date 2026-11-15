@@ -121,7 +121,7 @@ public abstract class TestcontainersConfig {
      * @return port
      */
     public static int getRabbitMqManagementPort() {
-        return RABBITMQ_CONTAINER.getManagementPort();
+        return RABBITMQ_CONTAINER.getMappedPort(15672);
     }
 
     /**

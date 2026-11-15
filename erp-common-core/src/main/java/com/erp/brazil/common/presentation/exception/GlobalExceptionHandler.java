@@ -22,6 +22,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Global exception handler for REST APIs.
@@ -132,7 +133,7 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST.value())
                 .detail("Required parameter '" + ex.getParameterName() + "' is missing")
                 .instance("/")
-                .extension("parameter", ex.getParameterName())
+                .extensions(Map.of("parameter", (Object) ex.getParameterName()))
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
@@ -145,15 +146,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         log.warn("Type mismatch: {}", ex.getMessage());
 
+        String expectedType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown";
         ProblemDetail problem = ProblemDetail.builder()
                 .type(URI.create("https://erp.brazil.com/problems/type-mismatch"))
                 .title("Type Mismatch")
                 .status(HttpStatus.BAD_REQUEST.value())
-                .detail("Parameter '" + ex.getName() + "' should be of type " +
-                        (ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown"))
+                .detail("Parameter '" + ex.getName() + "' should be of type " + expectedType)
                 .instance("/")
-                .extension("parameter", ex.getName())
-                .extension("expectedType", ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : null)
+                .extensions(Map.of("parameter", (Object) ex.getName(), "expectedType", (Object) expectedType))
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);

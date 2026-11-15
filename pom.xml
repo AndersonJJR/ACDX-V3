@@ -164,11 +164,11 @@
         <module>api-gateway</module>
         <module>identity-tenant-service</module>
         <module>finance-accounting-service</module>
-        <module=fiscal-brazil-service</module>
-        <module=hr-audit-service</module>
-        <module=inventory-supply-service</module>
-        <module=manufacturing-projects-service</module>
-        <module=sales-crm-service</module>
+        <module>fiscal-brazil-service</module>
+        <module>hr-audit-service</module>
+        <module>inventory-supply-service</module>
+        <module>manufacturing-projects-service</module>
+        <module>sales-crm-service</module>
     </modules>
 
     <build>

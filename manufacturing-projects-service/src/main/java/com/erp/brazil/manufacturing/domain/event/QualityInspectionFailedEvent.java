@@ -1,26 +1,28 @@
 package com.erp.brazil.manufacturing.domain.event;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class QualityInspectionFailedEvent {
-
-    private UUID eventId = UUID.randomUUID();
-    private LocalDateTime timestamp = LocalDateTime.now();
-    private String eventType = "QualityInspectionFailed";
-
-    private UUID qualityInspectionId;
+    private UUID eventId;
+    private LocalDateTime timestamp;
+    private UUID inspectionId;
     private String inspectionNumber;
     private UUID productId;
-    private String lotNumber;
-    private java.math.BigDecimal rejectedQuantity;
-    private UUID warehouseId;
-    private String inspectedBy;
-    private String nonConformanceNumber;
+    private BigDecimal rejectedQuantity;
+    private String disposition;
+    private UUID referenceId;
+    private String referenceType;
+    private List<UUID> nonConformanceIds;
 }

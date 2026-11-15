@@ -106,8 +106,9 @@ public class DistributedLock {
      * @param lockName the lock name
      * @param leaseTime the lock lease time
      * @return true if lock was acquired, false otherwise
+     * @throws InterruptedException if interrupted
      */
-    public boolean tryLock(String lockName, long leaseTime) {
+    public boolean tryLock(String lockName, long leaseTime) throws InterruptedException {
         RLock lock = redissonClient.getLock(LOCK_PREFIX + lockName);
         return lock.tryLock(leaseTime, TimeUnit.SECONDS);
     }
@@ -173,7 +174,21 @@ public class DistributedLock {
      * @throws Exception if the callable throws or lock acquisition fails
      */
     public <T> T executeCallable(String lockName, Callable<T> callable) throws Exception {
-        return execute(lockName, callable::call);
+        RLock lock = redissonClient.getLock(LOCK_PREFIX + lockName);
+        boolean acquired = lock.tryLock(DEFAULT_WAIT_TIME, DEFAULT_LEASE_TIME, TimeUnit.SECONDS);
+        if (!acquired) {
+            throw new LockAcquisitionException("Could not acquire lock: " + lockName +
+                    " within " + DEFAULT_WAIT_TIME + " seconds");
+        }
+        try {
+            log.debug("Lock acquired: {}", lockName);
+            return callable.call();
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+                log.debug("Lock released: {}", lockName);
+            }
+        }
     }
 
     /**

@@ -20,8 +20,17 @@ import java.util.UUID;
 @AllArgsConstructor
 public class DeliveryNote extends BaseEntity {
     
-    @Column(name = "delivery_code", length = 20, unique = true, nullable = false)
-    private String deliveryCode;
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
+    @Column(name = "number", length = 20, unique = true, nullable = false)
+    private String number;
+    
+    @Column(name = "series", length = 10)
+    private String series;
+    
+    @Column(name = "sales_order_id", nullable = false)
+    private UUID salesOrderId;
     
     @Column(name = "delivery_date", nullable = false)
     private LocalDate deliveryDate;
@@ -36,8 +45,8 @@ public class DeliveryNote extends BaseEntity {
     @Column(name = "carrier", length = 100)
     private String carrier;
     
-    @Column(name = "tracking_number", length = 100)
-    private String trackingNumber;
+    @Column(name = "tracking_code", length = 100)
+    private String trackingCode;
     
     @Column(name = "vehicle_plate", length = 10)
     private String vehiclePlate;
@@ -79,7 +88,7 @@ public class DeliveryNote extends BaseEntity {
     private String cancellationReason;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sales_order_id", nullable = false)
+    @JoinColumn(name = "sales_order_id", nullable = false, insertable = false, updatable = false)
     private SalesOrder salesOrder;
     
     @ManyToOne(fetch = FetchType.LAZY)

@@ -1,0 +1,77 @@
+# ERP Common Core - Development Configuration (SQLite)
+# Used for local development and testing
+
+spring:
+  profiles:
+    active: dev
+
+  # SQLite Database for development
+  datasource:
+    url: jdbc:sqlite:./data/erp-dev.db
+    driver-class-name: org.sqlite.JDBC
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  # JPA with SQLite dialect
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # MongoDB for development (embedded or local)
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/erp_dev}
+      auto-index-creation: true
+
+  # Redis for development
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  # RabbitMQ for development
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 2
+        max-concurrency: 10
+        prefetch: 10
+
+# Flyway disabled for dev (using hibernate ddl-auto)
+flyway:
+  enabled: false
+
+# Logging for development
+logging:
+  level:
+    com.erp.brazil: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"

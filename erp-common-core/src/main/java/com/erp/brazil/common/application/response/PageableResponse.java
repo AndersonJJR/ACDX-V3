@@ -88,7 +88,7 @@ public class PageableResponse<T> implements Serializable {
      */
     public <R> PageableResponse<R> map(Function<? super T, ? extends R> mapper) {
         List<R> newContent = content == null ? Collections.emptyList() :
-                content.stream().map(mapper).toList();
+                content.stream().map(mapper).collect(java.util.stream.Collectors.toList());
         return PageableResponse.<R>builder()
                 .content(newContent)
                 .pageNumber(this.pageNumber)

@@ -18,6 +18,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class SalesPerson extends BaseEntity {
 
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
     @Column(name = "employee_id", length = 50, unique = true, nullable = false)
     private String employeeId;
 

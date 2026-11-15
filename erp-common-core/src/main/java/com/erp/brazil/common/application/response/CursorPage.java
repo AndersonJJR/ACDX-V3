@@ -114,7 +114,7 @@ public class CursorPage<T> implements Serializable {
      */
     public <R> CursorPage<R> map(Function<? super T, ? extends R> mapper) {
         List<R> newContent = content == null ? Collections.emptyList() :
-                content.stream().map(mapper).toList();
+                content.stream().map(mapper).collect(java.util.stream.Collectors.toList());
         return CursorPage.<R>builder()
                 .content(newContent)
                 .nextCursor(this.nextCursor)

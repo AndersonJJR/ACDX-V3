@@ -1,0 +1,28 @@
+# API Gateway - Development Configuration
+
+spring:
+  profiles:
+    active: dev
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+  # Local Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+# Development server
+server:
+  port: 8080
+
+# Logging for development
+logging:
+  level:
+    com.erp.brazil.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"

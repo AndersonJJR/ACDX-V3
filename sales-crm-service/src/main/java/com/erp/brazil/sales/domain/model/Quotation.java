@@ -20,8 +20,14 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Quotation extends BaseEntity {
     
-    @Column(name = "quotation_code", length = 20, unique = true, nullable = false)
-    private String quotationCode;
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
+    @Column(name = "number", length = 20, unique = true, nullable = false)
+    private String number;
+    
+    @Column(name = "series", length = 10)
+    private String series;
     
     @Column(name = "version", nullable = false)
     private Integer version = 1;
@@ -108,8 +114,8 @@ public class Quotation extends BaseEntity {
     private Address shippingAddress;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prepared_by_id")
-    private SalesPerson preparedBy;
+    @JoinColumn(name = "created_by_id")
+    private SalesPerson createdBy;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by_id")

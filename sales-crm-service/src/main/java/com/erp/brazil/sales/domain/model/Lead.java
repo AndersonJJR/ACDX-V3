@@ -18,6 +18,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Lead extends BaseEntity {
     
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
     @Column(name = "lead_code", length = 20, unique = true, nullable = false)
     private String leadCode;
     
@@ -29,6 +32,9 @@ public class Lead extends BaseEntity {
     
     @Column(name = "source", length = 50)
     private String source;
+    
+    @Column(name = "score")
+    private Integer score = 0;
     
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
@@ -68,16 +74,16 @@ public class Lead extends BaseEntity {
     private Territory territory;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_to_id")
-    private SalesPerson assignedTo;
+    @JoinColumn(name = "assigned_sales_person_id")
+    private SalesPerson assignedSalesPerson;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pipeline_id")
     private SalesPipeline pipeline;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stage_id")
-    private PipelineStage stage;
+    @JoinColumn(name = "current_stage_id")
+    private PipelineStage currentStage;
     
     @OneToMany(mappedBy = "lead", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

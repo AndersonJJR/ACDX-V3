@@ -17,6 +17,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class SalesTeam extends BaseEntity {
     
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+    
     @Column(name = "team_code", length = 20, unique = true, nullable = false)
     private String teamCode;
     

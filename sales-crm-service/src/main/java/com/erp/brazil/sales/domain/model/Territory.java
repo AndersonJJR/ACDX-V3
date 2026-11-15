@@ -17,8 +17,11 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Territory extends BaseEntity {
     
-    @Column(name = "territory_code", length = 20, unique = true, nullable = false)
-    private String territoryCode;
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+    
+    @Column(name = "code", length = 20, unique = true, nullable = false)
+    private String code;
     
     @Column(name = "name", length = 100, nullable = false)
     private String name;
@@ -35,8 +38,8 @@ public class Territory extends BaseEntity {
     @Column(name = "zip_code_ranges", columnDefinition = "TEXT")
     private String zipCodeRanges; // JSON array of zip code ranges
     
-    @Column(name = "is_active")
-    private Boolean isActive = true;
+    @Column(name = "active")
+    private Boolean active = true;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_territory_id")

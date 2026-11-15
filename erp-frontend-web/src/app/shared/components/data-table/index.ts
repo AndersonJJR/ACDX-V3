@@ -1,0 +1,2 @@
+export { DataTableComponent } from './data-table.component';
+export type { Column, BadgeConfig, ActionButton, SortState, FilterState, PageEvent, DataTableConfig, SelectionConfig } from './data-table.component';

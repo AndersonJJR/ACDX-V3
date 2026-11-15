@@ -19,6 +19,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Customer extends BaseEntity {
     
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
     @Column(name = "customer_code", length = 20, unique = true, nullable = false)
     private String customerCode;
     
@@ -58,6 +61,12 @@ public class Customer extends BaseEntity {
     
     @Column(name = "payment_terms_days")
     private Integer paymentTermsDays = 30;
+    
+    @Column(name = "payment_term_id")
+    private UUID paymentTermId;
+    
+    @Column(name = "price_list_id")
+    private UUID priceListId;
     
     @Column(name = "is_active")
     private Boolean isActive = true;

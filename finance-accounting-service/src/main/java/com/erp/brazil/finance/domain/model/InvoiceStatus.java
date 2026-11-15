@@ -1,9 +1,8 @@
 package com.erp.brazil.finance.domain.model;
 
 public enum InvoiceStatus {
-    DRAFT("Draft"),
     PENDING("Pending"),
-    AUTHORIZED("Authorized"),
+    APPROVED("Approved"),
     PARTIALLY_PAID("Partially Paid"),
     PAID("Paid"),
     OVERDUE("Overdue"),

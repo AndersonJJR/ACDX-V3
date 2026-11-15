@@ -1,0 +1,161 @@
+<div class="w-full" [class.opacity-50]="disabled()">
+  <!-- Label -->
+  @if (config().label) {
+    <label [for]="inputId()" class="label">
+      {{ config().label }}
+      @if (required()) {
+        <span class="text-danger-500 ml-1" aria-hidden="true">*</span>
+      }
+    </label>
+  }
+
+  <!-- Input Wrapper -->
+  <div class="relative" [class]="getWrapperClasses()">
+    <!-- Prefix / Left Icon -->
+    @if (config().prefix || (config().icon && config().iconPosition === 'left')) {
+      <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-neutral-400 dark:text-neutral-500">
+        @if (config().prefix) {
+          <span class="text-sm font-medium">{{ config().prefix }}</span>
+        }
+        @if (config().icon && config().iconPosition === 'left') {
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path [attr.d]="config().icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+          </svg>
+        }
+      </div>
+    }
+
+    <!-- Select -->
+    @if (isSelect()) {
+      <select
+        [id]="inputId()"
+        [name]="name()"
+        [disabled]="disabled()"
+        [required]="required()"
+        [multiple]="config().multiple"
+        [class]="getInputClasses()"
+        [value]="value()"
+        (change)="onInput($event)"
+        (blur)="onBlur($event)"
+        (focus)="onFocus($event)"
+        (keydown)="onKeydown($event)"
+        [attr.aria-describedby]="describedBy()"
+        [attr.aria-invalid]="hasError()"
+        [attr.autocomplete]="config().autocomplete"
+      >
+        @if (!config().multiple && (!value() || value() === '')) {
+          <option value="" disabled selected hidden>{{ config().placeholder || 'Selecione...' }}</option>
+        }
+        @for (option of config().options!; track option.value) {
+          <option [value]="option.value" [disabled]="option.disabled">{{ option.label }}</option>
+        }
+      </select>
+    }
+
+    <!-- Textarea -->
+    @else if (isTextarea()) {
+      <textarea
+        [id]="inputId()"
+        [name]="name()"
+        [disabled]="disabled()"
+        [required]="required()"
+        [readonly]="config().readonly"
+        [placeholder]="config().placeholder"
+        [rows]="config().rows || 3"
+        [minlength]="config().minlength"
+        [maxlength]="config().maxlength"
+        [class]="getInputClasses()"
+        [value]="value()"
+        (input)="onInput($event)"
+        (blur)="onBlur($event)"
+        (focus)="onFocus($event)"
+        (keydown)="onKeydown($event)"
+        [attr.aria-describedby]="describedBy()"
+        [attr.aria-invalid]="hasError()"
+        [attr.autocomplete]="config().autocomplete"
+      ></textarea>
+    }
+
+    <!-- Input -->
+    @else {
+      <input
+        [id]="inputId()"
+        [name]="name()"
+        [type]="getInputType()"
+        [inputmode]="getInputMode()"
+        [disabled]="disabled()"
+        [required]="required()"
+        [readonly]="config().readonly"
+        [placeholder]="config().placeholder"
+        [min]="config().min"
+        [max]="config().max"
+        [step]="config().step"
+        [minlength]="config().minlength"
+        [maxlength]="config().maxlength"
+        [pattern]="config().pattern"
+        [class]="getInputClasses()"
+        [value]="value()"
+        (input)="onInput($event)"
+        (blur)="onBlur($event)"
+        (focus)="onFocus($event)"
+        (keydown)="onKeydown($event)"
+        [attr.aria-describedby]="describedBy()"
+        [attr.aria-invalid]="hasError()"
+        [attr.autocomplete]="config().autocomplete"
+        [mask]="config().mask"
+        [dropSpecialCharacters]="false"
+        [showMaskTyped]="false"
+      />
+    }
+
+    <!-- Suffix / Right Icon / Clear Button -->
+    @if (config().suffix || (config().icon && config().iconPosition === 'right') || showClear()) {
+      <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+        @if (showClear()) {
+          <button
+            type="button"
+            class="pointer-events-auto p-1 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 transition-colors"
+            (click)="onClear($event)"
+            aria-label="Limpar campo"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        }
+        @if (config().icon && config().iconPosition === 'right') {
+          <button
+            type="button"
+            class="pointer-events-auto p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+            (click)="onIconClick($event)"
+            [attr.aria-label]="'Ação do ícone'"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path [attr.d]="config().icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+            </svg>
+          </button>
+        }
+        @if (config().suffix) {
+          <span class="text-sm font-medium text-neutral-500 dark:text-neutral-400">{{ config().suffix }}</span>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Hint -->
+  @if (config().hint && !hasError()) {
+    <p [id]="inputId() + '-hint'" class="mt-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+      {{ config().hint }}
+    </p>
+  }
+
+  <!-- Error Message -->
+  @if (hasError()) {
+    <p [id]="inputId() + '-error'" class="mt-1.5 text-sm text-danger-600 dark:text-danger-400 flex items-center gap-1" role="alert">
+      <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+      </svg>
+      {{ errorMessage() }}
+    </p>
+  }
+</div>

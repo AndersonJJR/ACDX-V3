@@ -1,65 +1,64 @@
-server:
-  port: 8084
-  servlet:
-    context-path: /api/hr
-  error:
-    include-message: always
-    include-binding-errors: always
-
 spring:
   application:
     name: hr-audit-service
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # JPA / Hibernate
   jpa:
     hibernate:
       ddl-auto: validate
+    show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
-        use_sql_comments: true
+        dialect: org.hibernate.dialect.MySQLDialect
         jdbc:
-          time_zone: UTC
-        show_sql: false
+          time_zone: America/Sao_Paulo
     open-in-view: false
+
+  # Flyway
   flyway:
     enabled: true
-    locations: classpath:db/migration
     baseline-on-migrate: true
+    locations: classpath:db/migration
     validate-on-migrate: true
-    out-of-order: false
-  datasource:
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      idle-timeout: 300000
-      connection-timeout: 20000
-      leak-detection-threshold: 60000
+
+  # MongoDB
   data:
     mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/erp_hr_audit}
       auto-index-creation: true
-      auto-create-indexes: true
-    redis:
-      lettuce:
-        pool:
-          max-active: 20
-          max-idle: 10
-          min-idle: 2
-      timeout: 5000ms
+
+  # Redis
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  # RabbitMQ
   rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    publisher-confirm-type: correlated
+    publisher-returns: true
     listener:
       simple:
+        acknowledge-mode: manual
         concurrency: 5
         max-concurrency: 20
         prefetch: 10
-        default-requeue-rejected: false
-        retry:
-          enabled: true
-          initial-interval: 2000
-          max-interval: 30000
-          multiplier: 2
-          max-attempts: 5
+
+  # Mail
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}
@@ -74,10 +73,12 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+
+  # Quartz
   quartz:
     job-store-type: jdbc
     jdbc:
-      initialize-schema: always
+      initialize-schema: never
     properties:
       org:
         quartz:
@@ -95,41 +96,55 @@ spring:
             isClustered: true
             clusterCheckinInterval: 15000
             useProperties: false
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 20MB
 
+  # Security
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OAUTH2_ISSUER_URI:}
+          jwk-set-uri: ${OAUTH2_JWK_SET_URI:}
+
+# Server
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Actuator
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus,loggers,scheduledtasks,flyway,quartz
-      base-path: /actuator
+    jmx:
+      exposure:
+        include: '*'
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
       probes:
         enabled: true
-    prometheus:
-      enabled: true
   metrics:
     export:
       prometheus:
         enabled: true
     tags:
       application: ${spring.application.name}
-  info:
-    env:
-      enabled: true
 
+# Logging
 logging:
   level:
     com.erp.brazil.hr: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    org.flywaydb: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
@@ -138,219 +153,38 @@ logging:
     max-size: 100MB
     max-history: 30
 
+# OpenAPI / Swagger
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  packages-to-scan: com.erp.brazil.hr.presentation.rest
+
+# Application specific
 app:
-  security:
-    jwt:
-      secret: ${JWT_SECRET:change-this-in-production-min-256-bits}
-      expiration: 86400000
-      refresh-expiration: 604800000
-    cors:
-      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
-      allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
-      allowed-headers: "*"
-      allow-credentials: true
-  audit:
-    mongodb:
-      collection: audit_logs
-      capped-size: 104857600
-      max-documents: 1000000
-      ttl-days: 2555
-    masking:
-      enabled: true
-      fields: cpf,rg,email,phone,bank_account,pix_key,address
-  notifications:
-    queue:
-      redis-key: "hr:notifications:queue"
-      batch-size: 100
-      processing-interval: 5000
-    email:
-      from: ${NOTIFICATION_EMAIL_FROM:rh@empresa.com.br}
-      reply-to: ${NOTIFICATION_EMAIL_REPLY_TO:rh@empresa.com.br}
-    whatsapp:
-      api-url: ${WHATSAPP_API_URL:}
-      api-token: ${WHATSAPP_API_TOKEN:}
-      phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+  mongodb:
+    audit:
+      collection:
+        size: ${MONGODB_AUDIT_COLLECTION_SIZE:1073741824}
+        max-docs: ${MONGODB_AUDIT_MAX_DOCS:10000000}
+      ttl:
+        days: ${MONGODB_AUDIT_TTL_DAYS:2555}
+
   webhook:
-    outbox:
-      enabled: true
-      poll-interval: 5000
-      batch-size: 50
-    retry:
-      max-attempts: 5
-      initial-delay: 2000
-      max-delay: 30000
-      multiplier: 2
-    dead-letter:
-      enabled: true
-      queue-name: "hr:webhooks:dlq"
-  payroll:
-    inss:
-      brackets:
-        - limit: 1412.00
-          rate: 7.5
-        - limit: 2666.68
-          rate: 9.0
-        - limit: 4000.03
-          rate: 12.0
-        - limit: 7786.02
-          rate: 14.0
-      ceiling: 7786.02
-      max-contribution: 908.86
-    irrf:
-      brackets:
-        - limit: 2259.20
-          rate: 0.0
-          deduction: 0.00
-        - limit: 2826.65
-          rate: 7.5
-          deduction: 169.44
-        - limit: 3751.05
-          rate: 15.0
-          deduction: 381.44
-        - limit: 4664.68
-          rate: 22.5
-          deduction: 662.77
-        - limit: 999999999.00
-          rate: 27.5
-          deduction: 896.00
-      dependent-deduction: 189.59
-    fgts:
-      rate: 8.0
-      deposit-day: 7
-  ponto:
-    tolerance-minutes: 10
-    max-overtime-hours-day: 2
-    max-overtime-hours-month: 40
-    night-shift-start: "22:00"
-    night-shift-end: "05:00"
-    night-shift-additional: 20.0
+    timeout:
+      seconds: ${WEBHOOK_TIMEOUT_SECONDS:30}
+
+  whatsapp:
+    api:
+      url: ${WHATSAPP_API_URL:https://api.zenvia.com/v2}
+      token: ${WHATSAPP_API_TOKEN:}
+
+  payslip:
+    output-dir: ${PAYSLIP_OUTPUT_DIR:/tmp/payslips}
+
   lgpd:
-    dsar:
-      response-days: 15
-      verification-required: true
-    erasure:
-      retention-years: 5
-      exceptions:
-        - payroll
-        - fiscal
-        - legal
-  pdf:
-    payslip:
-      template-path: "templates/payslip"
-      watermark: "CONFIDENCIAL"
-      digital-signature:
-        enabled: true
-        keystore-path: ${PDF_KEYSTORE_PATH:}
-        keystore-password: ${PDF_KEYSTORE_PASSWORD:}
-        alias: ${PDF_KEYSTORE_ALIAS:}
-
----
-
-# Spring Profile: dev
-spring:
-  config:
-    activate:
-      on-profile: dev
-  datasource:
-    url: jdbc:sqlite:hr-audit-dev.db
-    driver-class-name: org.sqlite.JDBC
-    username: ""
-    password: ""
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/hr_audit_dev
-    redis:
-      host: localhost
-      port: 6379
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-  mail:
-    host: localhost
-    port: 1025
-    username: ""
-    password: ""
-    properties:
-      mail:
-        smtp:
-          auth: false
-          starttls:
-            enable: false
-  flyway:
-    enabled: false
-
----
-
-# Spring Profile: test
-spring:
-  config:
-    activate:
-      on-profile: test
-  datasource:
-    url: jdbc:tc:mysql:8.0:///hr_audit_test
-    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/hr_audit_test
-    redis:
-      host: localhost
-      port: 6379
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-  mail:
-    host: localhost
-    port: 1025
-  flyway:
-    enabled: true
-
----
-
-# Spring Profile: prod
-spring:
-  config:
-    activate:
-      on-profile: prod
-  datasource:
-    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/hr_audit?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${DATABASE_USERNAME:hr_audit}
-    password: ${DATABASE_PASSWORD:}
-    hikari:
-      maximum-pool-size: 50
-      minimum-idle: 10
-  data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/hr_audit}
-      auto-index-creation: false
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      ssl: ${REDIS_SSL:false}
-      lettuce:
-        pool:
-          max-active: 50
-          max-idle: 20
-          min-idle: 5
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    virtual-host: ${RABBITMQ_VHOST:/}
-    listener:
-      simple:
-        concurrency: 10
-        max-concurrency: 50
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
+    cpft-masking-enabled: true
+    audit-ttl-years: 7

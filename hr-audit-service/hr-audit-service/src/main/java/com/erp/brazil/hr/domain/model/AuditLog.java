@@ -1,76 +1,94 @@
 package com.erp.brazil.hr.domain.model;
 
+import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.index.Indexed;
 
 @Document(collection = "audit_logs")
-public record AuditLog(
-    @Id String id,
-    String eventId,
-    @Indexed Instant timestamp,
-    @Indexed Long companyId,
-    @Indexed Long userId,
-    @Indexed String entityType,
-    @Indexed String entityId,
-    String action,
-    Map<String, Object> oldValue,
-    Map<String, Object> newValue,
-    String ipAddress,
-    String userAgent,
-    String correlationId,
-    String sessionId
-) {
-    public static AuditLog create(String eventId, Long companyId, Long userId, String entityType, String entityId,
-                                  String action, Map<String, Object> oldValue, Map<String, Object> newValue,
-                                  String ipAddress, String userAgent, String correlationId, String sessionId) {
-        return new AuditLog(
-            null, eventId, Instant.now(), companyId, userId, entityType, entityId,
-            action, oldValue, newValue, ipAddress, userAgent, correlationId, sessionId
-        );
+@CompoundIndex(name = "idx_entity_id_type", def = "{'entityId': 1, 'entityType': 1}")
+@CompoundIndex(name = "idx_timestamp", def = "{'timestamp': -1}", expireAfterSeconds = 2555 * 24 * 60 * 60)
+@CompoundIndex(name = "idx_company_timestamp", def = "{'companyId': 1, 'timestamp': -1}")
+@CompoundIndex(name = "idx_user_timestamp", def = "{'userId': 1, 'timestamp': -1}")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class AuditLog {
+
+    @Id
+    private String id;
+
+    @Field("entity_id")
+    @Indexed
+    private String entityId;
+
+    @Field("entity_type")
+    @Indexed
+    private String entityType;
+
+    @Field("company_id")
+    @Indexed
+    private Long companyId;
+
+    @Field("user_id")
+    @Indexed
+    private String userId;
+
+    @Field("action")
+    private String action; // CREATE, UPDATE, DELETE, VIEW, EXPORT, LOGIN, LOGOUT, etc.
+
+    @Field("timestamp")
+    private Instant timestamp = Instant.now();
+
+    @Field("ip_address")
+    private String ipAddress;
+
+    @Field("user_agent")
+    private String userAgent;
+
+    @Field("request_id")
+    private String requestId;
+
+    @Field("session_id")
+    private String sessionId;
+
+    @Field("old_values")
+    private Map<String, Object> oldValues;
+
+    @Field("new_values")
+    private Map<String, Object> newValues;
+
+    @Field("changed_fields")
+    private java.util.List<String> changedFields;
+
+    @Field("metadata")
+    private Map<String, Object> metadata;
+
+    @Field("risk_level")
+    private RiskLevel riskLevel = RiskLevel.LOW;
+
+    @Field("compliance_tags")
+    private java.util.List<String> complianceTags;
+
+    @Field("is_masked")
+    private Boolean isMasked = false;
+
+    @Field("masked_fields")
+    private java.util.List<String> maskedFields;
+
+    public static AuditLogBuilder builder() {
+        return new AuditLogBuilder().id(UUID.randomUUID().toString());
     }
 
-    public AuditLog withMaskedValues() {
-        Map<String, Object> maskedOld = oldValue != null ? maskSensitiveFields(oldValue) : null;
-        Map<String, Object> maskedNew = newValue != null ? maskSensitiveFields(newValue) : null;
-        return new AuditLog(id, eventId, timestamp, companyId, userId, entityType, entityId,
-                          action, maskedOld, maskedNew, ipAddress, userAgent, correlationId, sessionId);
-    }
-
-    private Map<String, Object> maskSensitiveFields(Map<String, Object> values) {
-        return values.entrySet().stream()
-            .collect(java.util.stream.Collectors.toMap(
-                Map.Entry::getKey,
-                e -> maskValue(e.getKey(), e.getValue())
-            ));
-    }
-
-    private Object maskValue(String key, Object value) {
-        if (value == null) return null;
-        String lowerKey = key.toLowerCase();
-        if (lowerKey.contains("cpf") || lowerKey.contains("cnpj")) {
-            String str = value.toString();
-            if (str.length() == 14) return "***.***.***-**";
-            if (str.length() == 18) return "**.***.***/****-**";
-            return "**MASKED**";
-        }
-        if (lowerKey.contains("salary") || lowerKey.contains("salario") || lowerKey.contains("remuneration")) {
-            return "**.***";
-        }
-        if (lowerKey.contains("password") || lowerKey.contains("secret") || lowerKey.contains("token")) {
-            return "**MASKED**";
-        }
-        if (lowerKey.contains("email")) {
-            String email = value.toString();
-            int at = email.indexOf('@');
-            if (at > 2) return email.substring(0, 2) + "***" + email.substring(at);
-        }
-        if (lowerKey.contains("phone") || lowerKey.contains("telefone")) {
-            return "***-***-****";
-        }
-        return value;
+    public enum RiskLevel {
+        LOW, MEDIUM, HIGH, CRITICAL
     }
 }

@@ -17,6 +17,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PipelineStage extends BaseEntity {
 
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
     @Column(name = "code", length = 20, nullable = false)
     private String code;
 

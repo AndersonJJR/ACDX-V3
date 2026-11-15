@@ -1,26 +1,36 @@
 package com.erp.brazil.manufacturing.domain.event;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class ProductionOrderReleasedEvent {
-
-    private UUID eventId = UUID.randomUUID();
-    private LocalDateTime timestamp = LocalDateTime.now();
-    private String eventType = "ProductionOrderReleased";
-
+    private UUID eventId;
+    private LocalDateTime timestamp;
     private UUID productionOrderId;
     private String orderNumber;
     private UUID productId;
-    private java.math.BigDecimal orderedQuantity;
-    private UUID warehouseId;
-    private LocalDateTime plannedStartDate;
-    private LocalDateTime plannedEndDate;
-    private String releasedBy;
+    private BigDecimal orderedQuantity;
+    private List<MaterialReservationItem> materialReservations;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MaterialReservationItem {
+        private UUID componentId;
+        private BigDecimal requiredQuantity;
+        private String unitOfMeasure;
+        private UUID warehouseId;
+    }
 }

@@ -43,6 +43,17 @@ public class ProblemDetail implements Serializable {
         this.instance = instance;
     }
 
+    public ProblemDetail(URI type, String title, int status, String detail, String instance,
+                         OffsetDateTime timestamp, Map<String, Object> extensions) {
+        this.type = type;
+        this.title = title;
+        this.status = status;
+        this.detail = detail;
+        this.instance = instance;
+        this.timestamp = timestamp != null ? timestamp : OffsetDateTime.now();
+        this.extensions = extensions != null ? extensions : new LinkedHashMap<>();
+    }
+
     /**
      * Adds an extension property.
      *
@@ -82,7 +93,7 @@ public class ProblemDetail implements Serializable {
                 .status(400)
                 .detail(detail)
                 .instance(instance)
-                .extension("violations", violations)
+                .extensions(Map.of("violations", (Object) violations))
                 .build();
     }
 
@@ -101,8 +112,7 @@ public class ProblemDetail implements Serializable {
                 .status(404)
                 .detail(resource + " with identifier '" + identifier + "' not found")
                 .instance(instance)
-                .extension("resource", resource)
-                .extension("identifier", identifier)
+                .extensions(Map.of("resource", (Object) resource, "identifier", (Object) identifier))
                 .build();
     }
 

@@ -20,14 +20,17 @@ import java.util.UUID;
 @AllArgsConstructor
 public class SalesOrder extends BaseEntity {
     
-    @Column(name = "order_code", length = 20, unique = true, nullable = false)
-    private String orderCode;
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
+
+    @Column(name = "number", length = 20, unique = true, nullable = false)
+    private String number;
     
-    @Column(name = "title", length = 200)
-    private String title;
+    @Column(name = "series", length = 10)
+    private String series;
     
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "quotation_id")
+    private UUID quotationId;
     
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
@@ -36,8 +39,8 @@ public class SalesOrder extends BaseEntity {
     @Column(name = "order_date", nullable = false)
     private LocalDate orderDate;
     
-    @Column(name = "expected_delivery_date")
-    private LocalDate expectedDeliveryDate;
+    @Column(name = "delivery_date")
+    private LocalDate deliveryDate;
     
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
@@ -59,6 +62,9 @@ public class SalesOrder extends BaseEntity {
     
     @Column(name = "total_amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal totalAmount = BigDecimal.ZERO;
+    
+    @Column(name = "shipping_amount", precision = 15, scale = 2)
+    private BigDecimal shippingAmount = BigDecimal.ZERO;
     
     @Column(name = "currency", length = 3)
     private String currency = "BRL";
@@ -85,7 +91,7 @@ public class SalesOrder extends BaseEntity {
     private String cancellationReason;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quotation_id")
+    @JoinColumn(name = "quotation_id", insertable = false, updatable = false)
     private Quotation quotation;
     
     @ManyToOne(fetch = FetchType.LAZY)

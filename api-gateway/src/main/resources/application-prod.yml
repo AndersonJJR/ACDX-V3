@@ -1,0 +1,176 @@
+# API Gateway - Production Configuration
+
+spring:
+  profiles:
+    active: prod
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 60s
+        pool:
+          type: elastic
+          max-connections: 2000
+          acquire-timeout: 5000
+  # Production Redis (cluster or sentinel)
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl: ${REDIS_SSL:false}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: ${REDIS_MAX_ACTIVE:50}
+          max-idle: ${REDIS_MAX_IDLE:20}
+          min-idle: ${REDIS_MIN_IDLE:10}
+        shutdown-timeout: 2000ms
+  # Config Server
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://config-server:8888}
+    fail-fast: true
+    retry:
+      initial-interval: 2000
+      max-attempts: 10
+      max-interval: 30000
+      multiplier: 1.5
+
+# Production server
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain,application/javascript,text/css
+
+# Gateway Production Config
+gateway:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:https://erp.brazil.com,https://admin.erp.brazil.com}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:X-Tenant-ID,X-Request-ID,X-User-ID}
+    max-age: ${CORS_MAX_AGE:3600}
+
+# Actuator Production
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers,gateway
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    diskspace:
+      enabled: true
+      threshold: 10MB
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: production
+  tracing:
+    sampling:
+      probability: 0.1
+
+# Logging Production
+logging:
+  level:
+    com.erp.brazil.gateway: INFO
+    org.springframework.cloud.gateway: WARN
+    org.springframework.security: INFO
+    reactor.netty: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /var/log/erp/api-gateway.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+      total-size-cap: 3GB
+
+# Resilience4j Production
+resilience4j:
+  circuitbreaker:
+    instances:
+      identity-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+      finance-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+      fiscal-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+      hr-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+      inventory-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+      manufacturing-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+      sales-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+  timelimiter:
+    instances:
+      default:
+        timeoutDuration: 30s
+  retry:
+    instances:
+      default:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2

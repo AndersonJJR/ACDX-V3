@@ -1,0 +1,92 @@
+# API Gateway - Base Configuration
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 30s
+        pool:
+          type: elastic
+          max-connections: 1000
+          acquire-timeout: 5000
+  # Redis for Rate Limiting
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+  # Config Client
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://config-server:8888}
+    fail-fast: false
+    retry:
+      initial-interval: 2000
+      max-attempts: 6
+      max-interval: 10000
+      multiplier: 1.5
+
+# Gateway Configuration
+gateway:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:3000}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:X-Tenant-ID,X-Request-ID,X-User-ID}
+    max-age: ${CORS_MAX_AGE:3600}
+
+# JWT Configuration (shared with common-core)
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-this-secret-in-production-min-256-bits-change-this-secret-in-production}
+    access-token-validity-seconds: ${JWT_ACCESS_TOKEN_VALIDITY:3600}
+    issuer: ${JWT_ISSUER:erp-brazil}
+
+# Server
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers,gateway
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# Logging
+logging:
+  level:
+    com.erp.brazil.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web.reactive: DEBUG
+    reactor.netty: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

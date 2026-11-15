@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.Map;
 
 /**
@@ -118,7 +119,7 @@ public class DomainEventPublisher {
         properties.setHeader("userId", event.getUserId());
         properties.setHeader("companyId", event.getCompanyId());
         properties.setHeader("version", event.getVersion());
-        properties.setTimestamp(event.getOccurredAt().toInstant());
+        properties.setTimestamp(Date.from(event.getOccurredAt().toInstant()));
 
         return new Message(payload.getBytes(StandardCharsets.UTF_8), properties);
     }

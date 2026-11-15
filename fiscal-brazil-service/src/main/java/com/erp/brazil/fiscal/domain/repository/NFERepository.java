@@ -29,4 +29,12 @@ public interface NFERepository extends JpaRepository<NFE, String> {
     Long countByEmitenteCnpjAndDataEmissaoBetween(String emitenteCnpj, LocalDateTime start, LocalDateTime end);
 
     Long getMaxNumeroByEmitenteCnpjAndSerie(String emitenteCnpj, String serie);
+
+    @Query("SELECT n FROM NFE n WHERE n.companyId = :companyId AND n.series = :series AND CAST(n.number AS int) BETWEEN :start AND :end")
+    List<NFE> findByCompanyIdAndSeriesAndNumberRange(
+            @Param("companyId") String companyId,
+            @Param("series") String series,
+            @Param("start") int start,
+            @Param("end") int end
+    );
 }

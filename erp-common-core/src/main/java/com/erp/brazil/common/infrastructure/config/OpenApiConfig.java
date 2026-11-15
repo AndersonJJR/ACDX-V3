@@ -8,7 +8,6 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springdoc.core.models.SpringDocConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,13 +61,5 @@ public class OpenApiConfig {
                                 .description("JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"")))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .addSecurityItem(new SecurityRequirement().addList("X-Tenant-ID"));
-    }
-
-    @Bean
-    public SpringDocConfiguration springDocConfiguration() {
-        return new SpringDocConfiguration()
-                .apiDocsPath("/v3/api-docs")
-                .swaggerUiPath("/swagger-ui.html")
-                .showActuator(true);
     }
 }

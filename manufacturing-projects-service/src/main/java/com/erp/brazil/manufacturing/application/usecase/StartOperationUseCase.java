@@ -1,99 +1,99 @@
 package com.erp.brazil.manufacturing.application.usecase;
 
-import com.erp.brazil.manufacturing.application.event.ProductionOrderEventPublisher;
-import com.erp.brazil.manufacturing.domain.model.TimeLog;
-import com.erp.brazil.manufacturing.domain.model.TimeLog.LogType;
+import com.erp.brazil.manufacturing.domain.model.ProductionOrder;
+import com.erp.brazil.manufacturing.domain.model.ProductionOrderOperation;
 import com.erp.brazil.manufacturing.domain.model.WorkOrder;
-import com.erp.brazil.manufacturing.domain.model.WorkOrder.WorkOrderStatus;
-import com.erp.brazil.manufacturing.domain.model.WorkOrderOperation;
-import com.erp.brazil.manufacturing.domain.model.WorkOrderOperation.OperationStatus;
-import com.erp.brazil.manufacturing.domain.repository.TimeLogRepository;
+import com.erp.brazil.manufacturing.domain.repository.ProductionOrderOperationRepository;
+import com.erp.brazil.manufacturing.domain.repository.ProductionOrderRepository;
 import com.erp.brazil.manufacturing.domain.repository.WorkOrderRepository;
-import com.erp.brazil.manufacturing.domain.repository.WorkOrderOperationRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
+@Transactional
 public class StartOperationUseCase {
 
+    private final ProductionOrderOperationRepository operationRepository;
+    private final ProductionOrderRepository productionOrderRepository;
     private final WorkOrderRepository workOrderRepository;
-    private final WorkOrderOperationRepository workOrderOperationRepository;
-    private final TimeLogRepository timeLogRepository;
-    private final ProductionOrderEventPublisher eventPublisher;
 
-    public record StartOperationCommand(
-            UUID workOrderId,
-            UUID operationId,
-            UUID employeeId,
-            String startedBy
-    ) {}
+    public StartOperationUseCase(ProductionOrderOperationRepository operationRepository,
+                                  ProductionOrderRepository productionOrderRepository,
+                                  WorkOrderRepository workOrderRepository) {
+        this.operationRepository = operationRepository;
+        this.productionOrderRepository = productionOrderRepository;
+        this.workOrderRepository = workOrderRepository;
+    }
 
-    public record StartOperationResult(
-            UUID workOrderId,
-            UUID operationId,
-            OperationStatus operationStatus,
-            WorkOrderStatus workOrderStatus,
-            LocalDateTime actualStartDate
-    ) {}
+    public ProductionOrderOperation startProductionOrderOperation(UUID operationId, String startedBy) {
+        ProductionOrderOperation operation = operationRepository.findById(operationId)
+            .orElseThrow(() -> new IllegalArgumentException("Operation not found: " + operationId));
 
-    @Transactional
-    public StartOperationResult execute(StartOperationCommand command) {
-        log.info("Starting operation {} for work order {}", command.operationId(), command.workOrderId());
-
-        WorkOrder workOrder = workOrderRepository.findById(command.workOrderId())
-                .orElseThrow(() -> new IllegalArgumentException("Work order not found: " + command.workOrderId()));
-
-        WorkOrderOperation operation = workOrderOperationRepository.findById(command.operationId())
-                .orElseThrow(() -> new IllegalArgumentException("Work order operation not found: " + command.operationId()));
-
-        if (!operation.getWorkOrder().getId().equals(command.workOrderId())) {
-            throw new IllegalArgumentException("Operation does not belong to work order");
+        if (operation.getStatus() != ProductionOrderOperation.OperationStatus.PENDING &&
+            operation.getStatus() != ProductionOrderOperation.OperationStatus.READY &&
+            operation.getStatus() != ProductionOrderOperation.OperationStatus.WAITING_MATERIAL &&
+            operation.getStatus() != ProductionOrderOperation.OperationStatus.WAITING_CAPACITY) {
+            throw new IllegalStateException("Operation cannot be started. Current status: " + operation.getStatus());
         }
 
-        if (operation.getStatus() == OperationStatus.COMPLETED || operation.getStatus() == OperationStatus.CANCELLED) {
-            throw new IllegalStateException("Operation is already " + operation.getStatus());
-        }
-
-        operation.setStatus(OperationStatus.IN_PROGRESS);
+        operation.setStatus(ProductionOrderOperation.OperationStatus.IN_PROGRESS);
         operation.setActualStartDate(LocalDateTime.now());
 
-        if (workOrder.getStatus() == WorkOrderStatus.PLANNED || workOrder.getStatus() == WorkOrderStatus.RELEASED) {
-            workOrder.setStatus(WorkOrderStatus.IN_PROGRESS);
-            workOrder.setActualStartDate(LocalDateTime.now());
+        // Update parent production order status if needed
+        ProductionOrder order = operation.getProductionOrder();
+        if (order.getStatus() == ProductionOrder.ProductionOrderStatus.RELEASED) {
+            order.setStatus(ProductionOrder.ProductionOrderStatus.IN_PROGRESS);
+            order.setActualStartDate(LocalDateTime.now());
+            productionOrderRepository.save(order);
         }
 
-        TimeLog timeLog = TimeLog.builder()
-                .workOrder(workOrder)
-                .workOrderOperationId(command.operationId())
-                .employeeId(command.employeeId())
-                .logDate(LocalDateTime.now())
-                .logType(LogType.SETUP)
-                .startTime(LocalDateTime.now())
-                .approvalStatus(TimeLog.ApprovalStatus.AUTO_APPROVED)
-                .description("Operation started")
-                .createdBy(command.startedBy())
-                .build();
-        timeLogRepository.save(timeLog);
+        return operationRepository.save(operation);
+    }
 
-        workOrderOperationRepository.save(operation);
-        workOrderRepository.save(workOrder);
+    public WorkOrder startWorkOrder(UUID workOrderId, String startedBy) {
+        WorkOrder workOrder = workOrderRepository.findById(workOrderId)
+            .orElseThrow(() -> new IllegalArgumentException("Work Order not found: " + workOrderId));
 
-        eventPublisher.publishOperationStarted(workOrder, operation, command.employeeId());
+        if (workOrder.getStatus() != WorkOrder.WorkOrderStatus.PLANNED &&
+            workOrder.getStatus() != WorkOrder.WorkOrderStatus.RELEASED) {
+            throw new IllegalStateException("Work Order cannot be started. Current status: " + workOrder.getStatus());
+        }
 
-        return new StartOperationResult(
-                workOrder.getId(),
-                operation.getId(),
-                operation.getStatus(),
-                workOrder.getStatus(),
-                operation.getActualStartDate()
-        );
+        workOrder.setStatus(WorkOrder.WorkOrderStatus.IN_PROGRESS);
+        workOrder.setActualStartDate(LocalDateTime.now());
+
+        return workOrderRepository.save(workOrder);
+    }
+
+    public void startNextOperation(UUID completedOperationId) {
+        ProductionOrderOperation completed = operationRepository.findById(completedOperationId)
+            .orElseThrow(() -> new IllegalArgumentException("Operation not found: " + completedOperationId));
+
+        List<ProductionOrderOperation> nextOps = operationRepository
+            .findByProductionOrderIdOrderBySequence(completed.getProductionOrder().getId());
+
+        boolean found = false;
+        for (ProductionOrderOperation op : nextOps) {
+            if (found && op.getStatus() == ProductionOrderOperation.OperationStatus.PENDING) {
+                // Check if all previous operations are completed
+                boolean allPrevCompleted = nextOps.stream()
+                    .filter(o -> o.getSequence() < op.getSequence())
+                    .allMatch(o -> o.getStatus() == ProductionOrderOperation.OperationStatus.COMPLETED ||
+                                  o.getStatus() == ProductionOrderOperation.OperationStatus.SKIPPED);
+
+                if (allPrevCompleted) {
+                    op.setStatus(ProductionOrderOperation.OperationStatus.READY);
+                    operationRepository.save(op);
+                    break;
+                }
+            }
+            if (op.getId().equals(completedOperationId)) {
+                found = true;
+            }
+        }
     }
 }

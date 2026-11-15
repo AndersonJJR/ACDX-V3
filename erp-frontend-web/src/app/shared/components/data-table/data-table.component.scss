@@ -1,0 +1,96 @@
+:host {
+  display: block;
+}
+
+.resize-handle {
+  @apply w-1 h-full absolute right-0 top-0 cursor-col-resize hover:bg-primary-500 transition-colors;
+}
+
+.resize-handle:hover {
+  @apply bg-primary-500;
+}
+
+.resize-handle.dragging {
+  @apply bg-primary-600;
+}
+
+th {
+  @apply relative;
+}
+
+th:has(.resize-handle:hover) .resize-handle {
+  @apply bg-primary-500;
+}
+
+tr.selected {
+  @apply bg-primary-50 dark:bg-primary-900/20;
+}
+
+tr:hover {
+  @apply bg-neutral-50 dark:bg-neutral-800/50;
+}
+
+tr.selected:hover {
+  @apply bg-primary-100 dark:bg-primary-900/30;
+}
+
+tbody tr {
+  @apply transition-colors duration-150;
+}
+
+thead th {
+  @apply sticky top-0 z-10;
+}
+
+thead th.sticky {
+  @apply sticky left-0;
+}
+
+tbody td.sticky {
+  @apply sticky left-0 bg-white dark:bg-neutral-900 z-10;
+}
+
+/* Scrollbar styling */
+.overflow-x-auto {
+  @apply scrollbar-thin;
+}
+
+/* Focus styles for accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-neutral-950;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation: none;
+  }
+
+  tbody tr,
+  .resize-handle,
+  button,
+  input {
+    transition: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .resize-handle,
+  button,
+  input[type="text"],
+  select {
+    @apply hidden;
+  }
+
+  tbody tr {
+    @apply break-inside-avoid;
+  }
+
+  thead th {
+    @apply bg-neutral-200 dark:bg-neutral-700 !important;
+    @apply text-neutral-900 dark:text-neutral-100 !important;
+  }
+}
