@@ -75,3 +75,18 @@ coverage/
 # Build outputs
 out/
 bin/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+env/
+.venv/
+.env/
+pip-wheel-metadata/
+*.egg-info/
