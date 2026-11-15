@@ -1,0 +1,29 @@
+@use '../../../styles/variables' as *;
+
+:host {
+  display: block;
+}
+
+/* Custom properties for theming */
+:host {
+  --primary-color: #0039A6;
+  --secondary-color: #1db833;
+}
+
+/* Focus styles */
+button:focus-visible,
+a:focus-visible {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-neutral-950;
+}
+
+/* Print styles */
+@media print {
+  header,
+  footer {
+    @apply hidden !important;
+  }
+
+  main {
+    @apply max-w-none p-0 !important;
+  }
+}

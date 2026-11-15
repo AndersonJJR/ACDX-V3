@@ -1,0 +1,85 @@
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <div>
+      <div class="mx-auto h-12 w-12 bg-primary-600 rounded-xl flex items-center justify-center">
+        <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 16l4-16m-4 16l-4-16m4 16l-4-16"/>
+        </svg>
+      </div>
+      <h2 class="mt-6 text-center text-3xl font-bold text-gray-900">ERP Brazil</h2>
+      <p class="mt-2 text-center text-sm text-gray-600">Faça login para acessar o sistema</p>
+    </div>
+
+    <form class="mt-8 space-y-6" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      @if (errorMessage()) {
+        <div class="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-lg text-sm" role="alert">
+          {{ errorMessage() }}
+        </div>
+      }
+
+      <div class="rounded-lg shadow-sm -space-y-px">
+        <div>
+          <label for="username" class="sr-only">Usuário ou E-mail</label>
+          <input
+            id="username"
+            formControlName="username"
+            type="text"
+            autocomplete="username"
+            placeholder="Usuário ou E-mail"
+            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+            [class.border-danger-500]="loginForm.get('username')?.invalid && loginForm.get('username')?.touched"
+          >
+          @if (loginForm.get('username')?.invalid && loginForm.get('username')?.touched) {
+            <p class="mt-1 text-sm text-danger-600">Usuário é obrigatório</p>
+          }
+        </div>
+        <div>
+          <label for="password" class="sr-only">Senha</label>
+          <input
+            id="password"
+            formControlName="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Senha"
+            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+            [class.border-danger-500]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+          >
+          @if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
+            <p class="mt-1 text-sm text-danger-600">Senha é obrigatória</p>
+          }
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <input
+            id="rememberMe"
+            formControlName="rememberMe"
+            type="checkbox"
+            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+          >
+          <label for="rememberMe" class="ml-2 block text-sm text-gray-900">Lembrar-me</label>
+        </div>
+
+        <div class="text-sm">
+          <a href="#" class="font-medium text-primary-600 hover:text-primary-500" (click)="navigateToForgotPassword()">Esqueceu a senha?</a>
+        </div>
+      </div>
+
+      <div>
+        <app-btn
+          type="submit"
+          variant="primary"
+          [fullWidth]="true"
+          [loading]="isLoading()"
+        >
+          Entrar
+        </app-btn>
+      </div>
+    </form>
+
+    <div class="text-center text-sm text-gray-500">
+      <p>ERP Brazil v1.0.0</p>
+    </div>
+  </div>
+</div>

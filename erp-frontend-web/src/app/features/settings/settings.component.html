@@ -1,0 +1,283 @@
+<div class="max-w-4xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Configurações</h1>
+      <p class="text-gray-600 mt-1">Personalize sua experiência no ERP Brazil</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="bg-white dark:bg-neutral-900 rounded-xl shadow-card border border-neutral-200 dark:border-neutral-800">
+    <nav class="flex border-b border-neutral-200 dark:border-neutral-800" aria-label="Configurações">
+      @for (tab of tabs; track tab.id) {
+        <button
+          type="button"
+          (click)="setActiveTab(tab.id)"
+          [class]="activeTab() === tab.id
+            ? 'border-primary-500 text-primary-600'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:hover:text-gray-300 dark:hover:border-gray-600'"
+          class="flex items-center px-4 py-4 text-sm font-medium border-b-2 transition-colors -mb-px"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="tab.icon" />
+          </svg>
+          {{ tab.label }}
+        </button>
+      }
+    </nav>
+
+    <div class="p-6">
+      <!-- General Settings -->
+      @if (activeTab() === 'general') {
+        <form [formGroup]="generalForm" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Idioma</label>
+              <select formControlName="language" class="input w-full">
+                <option value="pt-BR">Português (Brasil)</option>
+                <option value="en-US">English (US)</option>
+                <option value="es-ES">Español (España)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fuso Horário</label>
+              <select formControlName="timezone" class="input w-full">
+                <option value="America/Sao_Paulo">America/Sao_Paulo (UTC-3)</option>
+                <option value="America/Recife">America/Recife (UTC-3)</option>
+                <option value="America/Manaus">America/Manaus (UTC-4)</option>
+                <option value="America/Rio_Branco">America/Rio_Branco (UTC-5)</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formato de Data</label>
+              <select formControlName="dateFormat" class="input w-full">
+                <option value="dd/MM/yyyy">DD/MM/AAAA</option>
+                <option value="MM/dd/yyyy">MM/DD/AAAA</option>
+                <option value="yyyy-MM-dd">AAAA-MM-DD</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Moeda</label>
+              <select formControlName="currency" class="input w-full">
+                <option value="BRL">Real Brasileiro (BRL)</option>
+                <option value="USD">Dólar Americano (USD)</option>
+                <option value="EUR">Euro (EUR)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center">
+              <input type="checkbox" formControlName="compactMode" id="compactMode" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+              <label for="compactMode" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Modo compacto (densidade reduzida)</label>
+            </div>
+            <div class="flex items-center">
+              <input type="checkbox" formControlName="autoSave" id="autoSave" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+              <label for="autoSave" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Salvar automaticamente alterações</label>
+            </div>
+          </div>
+        </form>
+      }
+
+      <!-- Appearance Settings -->
+      @if (activeTab() === 'appearance') {
+        <form [formGroup]="appearanceForm" class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tema</label>
+            <div class="flex space-x-4">
+              @for (theme of ['light', 'dark', 'system']; track theme) {
+                <label class="flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
+                  [class.border-primary-500]="appearanceForm.get('theme')?.value === theme"
+                  [class.bg-primary-50]="appearanceForm.get('theme')?.value === theme"
+                  [class.dark:bg-primary-900/20]="appearanceForm.get('theme')?.value === theme"
+                >
+                  <input type="radio" formControlName="theme" [value]="theme" class="sr-only">
+                  <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        [attr.d]="theme === 'light' ? 'M12 3v1m0 16v1m9-9h-1m4 0h-1m-15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' : theme === 'dark' ? 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' : 'M12 3v1m0 16v1m9-9h-1m4 0h-1m-15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z'"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1m4 0h-1m-15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{{ theme }}</span>
+                  </div>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cor Primária</label>
+              <input type="color" formControlName="primaryColor" class="h-10 w-20 rounded-lg border border-gray-300 cursor-pointer">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tamanho da Fonte</label>
+              <select formControlName="fontSize" class="input w-full">
+                <option value="small">Pequena</option>
+                <option value="medium">Média</option>
+                <option value="large">Grande</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center">
+              <input type="checkbox" formControlName="sidebarCollapsed" id="sidebarCollapsed" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+              <label for="sidebarCollapsed" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Sidebar colapsada por padrão</label>
+            </div>
+            <div class="flex items-center">
+              <input type="checkbox" formControlName="animations" id="animations" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+              <label for="animations" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Animações e transições</label>
+            </div>
+          </div>
+        </form>
+      }
+
+      <!-- Notifications Settings -->
+      @if (activeTab() === 'notifications') {
+        <form [formGroup]="notificationsForm" class="space-y-4">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail</label>
+                <p class="text-sm text-gray-500">Receber notificações por e-mail</p>
+              </div>
+              <input type="checkbox" formControlName="emailNotifications" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Push</label>
+                <p class="text-sm text-gray-500">Notificações push no navegador</p>
+              </div>
+              <input type="checkbox" formControlName="pushNotifications" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Atualizações de Pedidos</label>
+                <p class="text-sm text-gray-500">Notificar sobre mudanças de status</p>
+              </div>
+              <input type="checkbox" formControlName="orderUpdates" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Alertas de Pagamento</label>
+                <p class="text-sm text-gray-500">Vencimentos e recebimentos</p>
+              </div>
+              <input type="checkbox" formControlName="paymentAlerts" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Anúncios do Sistema</label>
+                <p class="text-sm text-gray-500">Novidades e manutenções</p>
+              </div>
+              <input type="checkbox" formControlName="systemAnnouncements" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resumo Semanal</label>
+                <p class="text-sm text-gray-500">Resumo das atividades da semana</p>
+              </div>
+              <input type="checkbox" formControlName="weeklyDigest" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+          </div>
+        </form>
+      }
+
+      <!-- Security Settings -->
+      @if (activeTab() === 'security') {
+        <form [formGroup]="securityForm" class="space-y-6">
+          <div class="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 mb-6">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-primary-600 dark:text-primary-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+              </svg>
+              <div>
+                <h3 class="font-medium text-primary-900 dark:text-primary-100">Autenticação de Dois Fatores (2FA)</h3>
+                <p class="text-sm text-primary-700 dark:text-primary-300">Adicione uma camada extra de segurança à sua conta</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">2FA Ativado</label>
+              <p class="text-sm text-gray-500">Requer código de autenticação no login</p>
+            </div>
+            <input type="checkbox" formControlName="twoFactorEnabled" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tempo de Sessão (minutos)</label>
+              <input type="number" formControlName="sessionTimeout" class="input w-full" min="15" max="1440">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiração de Senha (dias)</label>
+              <input type="number" formControlName="passwordExpiration" class="input w-full" min="30" max="365">
+            </div>
+          </div>
+
+          <div class="flex items-center">
+            <input type="checkbox" formControlName="loginHistory" id="loginHistory" class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            <label for="loginHistory" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Manter histórico de logins</label>
+          </div>
+        </form>
+      }
+
+      <!-- Advanced Settings -->
+      @if (activeTab() === 'advanced') {
+        <form [formGroup]="advancedForm" class="space-y-4">
+          <div class="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg p-4 mb-6">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-warning-600 dark:text-warning-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h3 class="font-medium text-warning-900 dark:text-warning-100">Configurações Avançadas</h3>
+                <p class="text-sm text-warning-700 dark:text-warning-300">Altere estas configurações apenas se souber o que está fazendo</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Modo Debug</label>
+                <p class="text-sm text-gray-500">Ativa logs detalhados no console</p>
+              </div>
+              <input type="checkbox" formControlName="debugMode" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Log de API</label>
+                <p class="text-sm text-gray-500">Registra todas as requisições HTTP</p>
+              </div>
+              <input type="checkbox" formControlName="apiLogging" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Monitoramento de Performance</label>
+                <p class="text-sm text-gray-500">Mede tempos de carregamento e renderização</p>
+              </div>
+              <input type="checkbox" formControlName="performanceMonitoring" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Atualizações Automáticas</label>
+                <p class="text-sm text-gray-500">Aplica atualizações em segundo plano</p>
+              </div>
+              <input type="checkbox" formControlName="autoUpdates" class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+            </div>
+          </div>
+        </form>
+      }
+
+      <!-- Actions -->
+      <div class="flex justify-end space-x-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+        <app-btn variant="secondary" (click)="onReset()">Restaurar Padrões</app-btn>
+        <app-btn variant="primary" (click)="onSave()">Salvar Alterações</app-btn>
+      </div>
+    </div>
+  </div>
+</div>

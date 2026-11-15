@@ -13,7 +13,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { formatNumberBR } from '../../../formatters/brazilian-formatters';
+import { formatNumberBR } from '../../formatters/brazilian-formatters';
 
 export interface Column<T = any> {
   key: string;
@@ -28,6 +28,8 @@ export interface Column<T = any> {
   formatter?: (value: any, row: T) => string;
   badgeConfig?: BadgeConfig;
   sticky?: boolean;
+  resizable?: boolean;
+  actions?: ActionButton<T>[];
 }
 
 export interface BadgeConfig {
@@ -119,6 +121,13 @@ export class DataTableComponent<T = any> implements OnInit, OnDestroy {
 
   readonly displayedColumns = computed(() => this.config().columns.map((c) => c.key));
   readonly hasSelection = computed(() => this.config().selection?.enabled ?? false);
+
+  readonly tableState = computed(() => {
+    const config = this.config();
+    if (config.loading) return 'loading';
+    if (config.data.length === 0) return 'empty';
+    return 'data';
+  });
 
   // Track by function
   readonly trackByFn = computed(() => this.config().trackBy ?? ((index: number, item: T) => index));
@@ -390,5 +399,30 @@ export class DataTableComponent<T = any> implements OnInit, OnDestroy {
     const start = pageIndex * pageSize + 1;
     const end = Math.min((pageIndex + 1) * pageSize, totalItems);
     return `${start}–${end} de ${formatNumberBR(totalItems, 0)}`;
+  }
+
+  getLastPageIndex(): number {
+    const { pageSize, totalItems } = this.config();
+    return Math.ceil(totalItems / pageSize) - 1;
+  }
+
+  getColumnType(column: Column): string {
+    return column.type || 'text';
+  }
+
+  getBadgeValue(row: T, column: Column<T>): string {
+    return this.formatValue((row as Record<string, unknown>)[column.key], column, row);
+  }
+
+  getCellValue(row: T, column: Column<T>): string {
+    return this.formatValue((row as Record<string, unknown>)[column.key], column, row);
+  }
+
+  // Returns array of cell values for a row to avoid nested loops in template
+  getCellValues(row: T): { column: Column<T>; value: string }[] {
+    return this.config().columns.map(column => ({
+      column,
+      value: this.getCellValue(row, column)
+    }));
   }
 }

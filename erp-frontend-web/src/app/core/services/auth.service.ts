@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { Observable, catchError, of, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ToastService } from '../../shared/components/toast/toast.service';
 
@@ -69,10 +70,6 @@ export interface RefreshTokenResponse {
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
-  private readonly toastService = inject(ToastService);
-
   private readonly _user = signal<User | null>(null);
   private readonly _company = signal<Company | null>(null);
   private readonly _menus = signal<MenuItem[]>([]);
@@ -100,7 +97,11 @@ export class AuthService {
   readonly roles = computed(() => this._user()?.roles ?? []);
   readonly enabledModules = computed(() => this._company()?.enabledModules ?? []);
 
-  constructor() {
+  constructor(
+    private readonly http: HttpClient,
+    private readonly router: Router,
+    private readonly toastService: ToastService
+  ) {
     // Restaura tokens do localStorage na inicialização
     this.restoreSession();
 
@@ -168,25 +169,26 @@ export class AuthService {
     }
   }
 
-  async refreshAccessToken(): Promise<boolean> {
+  refreshAccessToken(): Observable<boolean> {
     const refreshToken = this._refreshToken();
-    if (!refreshToken) return false;
+    if (!refreshToken) return of(false);
 
-    try {
-      const response = await this.http
-        .post<RefreshTokenResponse>(`${environment.apiUrl}/auth/refresh`, { refreshToken })
-        .toPromise();
-
-      if (response) {
-        this._accessToken.set(response.accessToken);
-        return true;
-      }
-      return false;
-    } catch {
-      this.clearSession();
-      this.router.navigate(['/login']);
-      return false;
-    }
+    return this.http
+      .post<RefreshTokenResponse>(`${environment.apiUrl}/auth/refresh`, { refreshToken })
+      .pipe(
+        map((response: RefreshTokenResponse) => {
+          if (response) {
+            this._accessToken.set(response.accessToken);
+            return true;
+          }
+          return false;
+        }),
+        catchError(() => {
+          this.clearSession();
+          this.router.navigate(['/login']);
+          return of(false);
+        })
+      );
   }
 
   async fetchBootInfo(): Promise<void> {

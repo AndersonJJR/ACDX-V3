@@ -3,7 +3,9 @@ import {
   input,
   output,
   computed,
+  signal,
   inject,
+  HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -33,14 +35,36 @@ export class PortalLayoutComponent {
 
   logout = output<void>();
 
+  private _userMenuOpen = signal(false);
+
   readonly user = computed(() => this.authService.user());
   readonly company = computed(() => this.authService.company());
+  readonly userMenuOpen = computed(() => this._userMenuOpen());
 
   readonly primaryColor = computed(() => this.config().primaryColor || '#0039A6');
   readonly secondaryColor = computed(() => this.config().secondaryColor || '#1db833');
+  readonly currentYear = new Date().getFullYear();
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.user-menu') && this._userMenuOpen()) {
+      this._userMenuOpen.set(false);
+    }
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscapeKey(event: KeyboardEvent): void {
+    this._userMenuOpen.set(false);
+  }
 
   onLogout(): void {
+    this._userMenuOpen.set(false);
     this.logout.emit();
+  }
+
+  toggleUserMenu(): void {
+    this._userMenuOpen.update(v => !v);
   }
 
   getCompanyLogo(): string {

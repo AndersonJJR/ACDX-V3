@@ -1,11 +1,11 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class TenantService {
-  private readonly authService = inject(AuthService);
+  constructor(private readonly authService: AuthService) {}
 
   private readonly _tenantId = signal<string | null>(null);
   private readonly _tenantSlug = signal<string | null>(null);

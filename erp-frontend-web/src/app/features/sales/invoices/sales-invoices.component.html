@@ -1,0 +1,24 @@
+<div class="space-y-6">
+  <app-page-header
+    title="Notas Fiscais de Saída"
+    description="Em desenvolvimento - funcionalidade será implementada em breve"
+    [actions]="headerActions"
+  />
+
+  <app-card>
+    <app-data-table
+      [config]="{
+        columns: columns,
+        data: data,
+        totalItems: totalItems,
+        pageIndex: pageIndex,
+        pageSize: pageSize,
+        pageSizeOptions: pageSizeOptions,
+        loading: false,
+        emptyMessage: 'Nenhum registro encontrado'
+      }"
+      (pageChange)="onPageChange($event)"
+      (rowClick)="onRowClick($event.row)"
+    ></app-data-table>
+  </app-card>
+</div>

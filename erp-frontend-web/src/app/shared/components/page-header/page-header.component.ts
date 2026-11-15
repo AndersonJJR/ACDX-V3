@@ -37,4 +37,19 @@ export class PageHeaderComponent {
 
   readonly hasDescription = computed(() => !!this.description());
   readonly hasActions = computed(() => this.showActions() && this.actions().length > 0);
+
+  onActionClick(action: PageHeaderAction): void {
+    this.actionClick.emit(action);
+    action.click?.();
+  }
+
+  getActionClass(variant: string): string {
+    const classes: Record<string, string> = {
+      primary: 'btn-primary',
+      secondary: 'btn-secondary',
+      danger: 'btn-danger',
+      ghost: 'btn-ghost',
+    };
+    return classes[variant] || classes['primary'];
+  }
 }

@@ -5,6 +5,7 @@ import {
   computed,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute, NavigationEnd } from '@angular/router';

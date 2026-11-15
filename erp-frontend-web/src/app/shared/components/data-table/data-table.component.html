@@ -1,264 +1,110 @@
 <div class="card overflow-hidden">
-  <!-- Toolbar -->
-  <div class="card-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <div class="flex items-center gap-2">
-      @if (config().selection?.enabled) {
-        <label class="inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            class="sr-only peer"
-            [checked]="areAllRowsSelected()"
-            [indeterminate]="areSomeRowsSelected()"
-            (change)="onSelectAll($event)"
-            [disabled]="config().data.length === 0"
-          />
-          <div class="w-4 h-4 rounded border border-neutral-300 peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:after:content-[''] peer-checked:after:absolute peer-checked:after:left-1 peer-checked:after:top-0.5 peer-checked:after:w-1.5 peer-checked:after:h-3 peer-checked:after:border-white peer-checked:after:border-r-2 peer-checked:after:border-b-2 peer-checked:after:rotate-45 peer-indeterminate:bg-neutral-400 peer-indeterminate:border-neutral-400 peer-indeterminate:after:content-[''] peer-indeterminate:after:absolute peer-indeterminate:after:left-1 peer-indeterminate:after:top-1.5 peer-indeterminate:after:w-2 peer-indeterminate:after:h-0.5 peer-indeterminate:after:bg-white peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2"></div>
-        </label>
-      }
-    </div>
-
-    <div class="flex items-center gap-2">
-      @if (hasActiveFilters()) {
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm text-warning-600 hover:bg-warning-50 dark:hover:bg-warning-900/20"
-          (click)="clearFilters()"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Limpar filtros
-        </button>
-      }
-    </div>
-  </div>
-
-  <!-- Table -->
   <div class="overflow-x-auto">
     <table class="w-full" role="grid">
       <thead class="bg-neutral-50 dark:bg-neutral-800/50">
         <tr class="border-b border-neutral-200 dark:border-neutral-700">
-          @for (column of config().columns; track column.key) {
-            <th
+          <th *ngFor="let column of config().columns"
               [style]="getHeaderStyle(column)"
-              class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider whitespace-nowrap"
-              [attr.aria-sort]="sortState()?.column === column.key ? (sortState()?.direction === 'asc' ? 'ascending' : 'descending') : 'none'"
-              [attr.aria-label]="column.label + (column.sortable ? ', ordenar' : '')"
-            >
-              <div class="flex items-center gap-2">
-                @if (config().selection?.enabled && $first) {
-                  <label class="inline-flex items-center cursor-pointer -ml-2">
-                    <input
-                      type="checkbox"
-                      class="sr-only peer"
-                      [checked]="areAllRowsSelected()"
-                      [indeterminate]="areSomeRowsSelected()"
-                      (change)="onSelectAll($event)"
-                      [disabled]="config().data.length === 0"
-                    />
-                    <div class="w-4 h-4 rounded border border-neutral-300 peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:after:content-[''] peer-checked:after:absolute peer-checked:after:left-1 peer-checked:after:top-0.5 peer-checked:after:w-1.5 peer-checked:after:h-3 peer-checked:after:border-white peer-checked:after:border-r-2 peer-checked:after:border-b-2 peer-checked:after:rotate-45 peer-indeterminate:bg-neutral-400 peer-indeterminate:border-neutral-400 peer-indeterminate:after:content-[''] peer-indeterminate:after:absolute peer-indeterminate:after:left-1 peer-indeterminate:after:top-1.5 peer-indeterminate:after:w-2 peer-indeterminate:after:h-0.5 peer-indeterminate:after:bg-white peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2"></div>
-                  </label>
-                }
-
-                <span>{{ column.label }}</span>
-
-                @if (column.sortable) {
-                  <button
-                    type="button"
-                    class="p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                    (click)="onSort(column)"
-                    aria-label="Ordenar por {{ column.label }}"
-                  >
-                    <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path [attr.d]="getSortIcon(column)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
-                    </svg>
-                  </button>
-                }
-
-                @if (column.filterable) {
-                  <input
-                    type="text"
-                    class="ml-2 px-2 py-1 text-xs border border-neutral-200 rounded bg-white dark:border-neutral-700 dark:bg-neutral-800 w-32"
-                    placeholder="Filtrar"
-                    (input)="onFilterChange(column, $any($event.target).value)"
-                    (click)="$event.stopPropagation()"
-                    aria-label="Filtrar {{ column.label }}"
-                  />
-                }
-
-                @if (column.resizable !== false) {
-                  <div
-                    class="resize-handle w-1 h-full absolute right-0 top-0 cursor-col-resize hover:bg-primary-500 transition-colors"
-                    (mousedown)="onColumnResizeStart(column, $event)"
-                    title="Redimensionar coluna"
-                  ></div>
-                }
-              </div>
-            </th>
-          }
+              class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider whitespace-nowrap">
+            <span>{{ column.label }}</span>
+          </th>
         </tr>
       </thead>
 
       <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
-        @if (config().loading) {
-          <tr>
-            <td [attr.colspan]="config().columns.length" class="px-4 py-12 text-center">
-              <div class="flex items-center justify-center gap-3 text-neutral-500 dark:text-neutral-400">
-                <svg class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Carregando...</span>
-              </div>
-            </td>
-          </tr>
-        } @else if (config().data.length === 0) {
-          <tr>
-            <td [attr.colspan]="config().columns.length" class="px-4 py-12 text-center text-neutral-500 dark:text-neutral-400">
-              {{ config().emptyMessage || 'Nenhum registro encontrado' }}
-            </td>
-          </tr>
-        } @else {
-          @for (row of config().data; track trackByFn($index, row)) {
-            <tr
-              [class]="getRowClasses(row)"
-              [style]="getRowStyles(row)"
-              (click)="onRowClick(row, $event)"
-              class="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
-              role="row"
-            >
-              @for (column of config().columns; track column.key) {
-                <td
-                  [style]="getCellStyle(column)"
-                  class="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100 whitespace-nowrap"
-                  role="gridcell"
-                >
-                  @if (config().selection?.enabled && $first) {
-                    <label class="inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        class="sr-only peer"
-                        [checked]="isRowSelected(row)"
-                        (change)="onRowSelectionChange(row, $event)"
-                      />
-                      <div class="w-4 h-4 rounded border border-neutral-300 peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:after:content-[''] peer-checked:after:absolute peer-checked:after:left-1 peer-checked:after:top-0.5 peer-checked:after:w-1.5 peer-checked:after:h-3 peer-checked:after:border-white peer-checked:after:border-r-2 peer-checked:after:border-b-2 peer-checked:after:rotate-45 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2"></div>
-                    </label>
-                  }
+        <tr *ngIf="config().loading">
+          <td [attr.colspan]="config().columns.length" class="px-4 py-12 text-center">
+            <div class="flex items-center justify-center gap-3 text-neutral-500 dark:text-neutral-400">
+              <svg class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>Carregando...</span>
+            </div>
+          </td>
+        </tr>
 
-                  @switch (column.type) {
-                    @case ('badge') {
-                      <span class="badge" [class]="getBadgeClass(formatValue(row[column.key], column, row), column)">
-                        {{ formatValue(row[column.key], column, row) }}
-                      </span>
-                    }
-                    @case ('actions') {
-                      <div class="flex items-center gap-1">
-                        @for (action of (column.formatter ? [] : (column as any).actions || []); track action.label) {
-                          @if (!action.hidden?.(row)) {
-                            <button
-                              type="button"
-                              class="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 transition-colors"
-                              [class]="action.class"
-                              [disabled]="action.disabled?.(row)"
-                              (click)="onActionClick(action.label, row, $event)"
-                              aria-label="{{ action.label }}"
-                            >
-                              @if (action.icon) {
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path [attr.d]="action.icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
-                                </svg>
-                              } @else {
-                                <span class="text-xs font-medium">{{ action.label }}</span>
-                              }
-                            </button>
-                          }
-                        }
-                      </div>
-                    }
-                    @default {
-                      {{ formatValue(row[column.key], column, row) }}
-                    }
-                  }
-                </td>
-              }
-            </tr>
-          }
-        }
+        <tr *ngIf="!config().loading && config().data.length === 0">
+          <td [attr.colspan]="config().columns.length" class="px-4 py-12 text-center text-neutral-500 dark:text-neutral-400">
+            {{ config().emptyMessage || 'Nenhum registro encontrado' }}
+          </td>
+        </tr>
+
+        <tr *ngFor="let row of config().data; trackBy: trackByFn; let rowIndex = index"
+            [class]="getRowClasses(row)"
+            [style]="getRowStyles(row)"
+            (click)="onRowClick(row, $event)"
+            class="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+            role="row">
+          <ng-container *ngFor="let cell of getCellValues(row); track cell.column.key">
+            <td [style]="getCellStyle(cell.column)"
+                class="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100 whitespace-nowrap"
+                role="gridcell">
+              {{ cell.value }}
+            </td>
+          </ng-container>
+        </tr>
+
+        <tr *ngIf="!config().loading && config().data.length === 0">
+          <td [attr.colspan]="config().columns.length" class="px-4 py-12 text-center text-neutral-500 dark:text-neutral-400">
+            {{ config().emptyMessage || 'Nenhum registro encontrado' }}
+          </td>
+        </tr>
       </tbody>
     </table>
   </div>
 
-  <!-- Pagination -->
-  @if (config().totalItems > config().pageSize) {
-    <div class="card-footer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <div class="flex items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
-        <span>{{ getPageInfo() }}</span>
+  <div *ngIf="config().totalItems > config().pageSize" class="card-footer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="flex items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
+      <span>{{ getPageInfo() }}</span>
 
-        <select
-          class="input input-sm w-auto"
-          [value]="config().pageSize"
-          (change)="onPageSizeChange($any($event.target).value)"
-          aria-label="Itens por página"
-        >
-          @for (size of config().pageSizeOptions; track size) {
-            <option [value]="size">{{ size }} por página</option>
-          }
-        </select>
-      </div>
-
-      <div class="flex items-center gap-1">
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          [disabled]="config().pageIndex === 0"
-          (click)="onPageChange({ pageIndex: 0, pageSize: config().pageSize, length: config().totalItems })"
-          aria-label="Primeira página"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          [disabled]="config().pageIndex === 0"
-          (click)="onPageChange({ pageIndex: config().pageIndex - 1, pageSize: config().pageSize, length: config().totalItems })"
-          aria-label="Página anterior"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-
-        <span class="px-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">
-          {{ config().pageIndex + 1 }}
-        </span>
-
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          [disabled]="(config().pageIndex + 1) * config().pageSize >= config().totalItems"
-          (click)="onPageChange({ pageIndex: config().pageIndex + 1, pageSize: config().pageSize, length: config().totalItems })"
-          aria-label="Próxima página"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          [disabled]="(config().pageIndex + 1) * config().pageSize >= config().totalItems"
-          (click)="onPageChange({ pageIndex: Math.ceil(config().totalItems / config().pageSize) - 1, pageSize: config().pageSize, length: config().totalItems })"
-          aria-label="Última página"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7m-8-14l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
+      <select class="input input-sm w-auto"
+              [value]="config().pageSize"
+              (change)="onPageSizeChange($any($event.target).value)"
+              aria-label="Itens por página">
+        <option *ngFor="let size of config().pageSizeOptions" [value]="size">{{ size }} por página</option>
+      </select>
     </div>
-  }
-</div>
+
+    <div class="flex items-center gap-1">
+      <button type="button" class="btn btn-ghost btn-sm"
+              [disabled]="config().pageIndex === 0"
+              (click)="onPageChange({ pageIndex: 0, pageSize: config().pageSize, length: config().totalItems })"
+              aria-label="Primeira página">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+        </svg>
+      </button>
+
+      <button type="button" class="btn btn-ghost btn-sm"
+              [disabled]="config().pageIndex === 0"
+              (click)="onPageChange({ pageIndex: config().pageIndex - 1, pageSize: config().pageSize, length: config().totalItems })"
+              aria-label="Página anterior">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      <span class="px-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+        {{ config().pageIndex + 1 }}
+      </span>
+
+      <button type="button" class="btn btn-ghost btn-sm"
+              [disabled]="(config().pageIndex + 1) * config().pageSize >= config().totalItems"
+              (click)="onPageChange({ pageIndex: config().pageIndex + 1, pageSize: config().pageSize, length: config().totalItems })"
+              aria-label="Próxima página">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+
+      <button type="button" class="btn btn-ghost btn-sm"
+              [disabled]="(config().pageIndex + 1) * config().pageSize >= config().totalItems"
+              (click)="onPageChange({ pageIndex: getLastPageIndex(), pageSize: config().pageSize, length: config().totalItems })"
+              aria-label="Última página">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7m-8-14l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  </div>
