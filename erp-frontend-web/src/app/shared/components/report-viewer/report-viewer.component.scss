@@ -1,0 +1,47 @@
+:host {
+  display: block;
+}
+
+.report-viewer {
+  @apply overflow-hidden;
+}
+
+.report-content {
+  @apply prose prose-neutral dark:prose-invert max-w-none;
+}
+
+.report-content table {
+  @apply w-full border-collapse;
+}
+
+.report-content th,
+.report-content td {
+  @apply px-3 py-2 text-sm border border-neutral-200 dark:border-neutral-700;
+}
+
+.report-content th {
+  @apply bg-neutral-100 dark:bg-neutral-800 font-semibold text-neutral-900 dark:text-neutral-100;
+}
+
+.report-content tr:nth-child(even) td {
+  @apply bg-neutral-50 dark:bg-neutral-800/50;
+}
+
+/* Print styles */
+@media print {
+  .report-viewer {
+    @apply shadow-none border-none;
+  }
+
+  .card-header {
+    @apply hidden;
+  }
+
+  .report-content {
+    @apply text-black;
+  }
+
+  .report-content table {
+    @apply text-sm;
+  }
+}

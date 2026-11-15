@@ -1,0 +1,12 @@
+<div class="chart-container" [style.width.px]="width()" [style.height.px]="height()">
+  <canvas
+    #canvas
+    [id]="canvasId()"
+    [width]="width()"
+    [height]="height()"
+    (click)="onCanvasClick($event)"
+    (mousemove)="onCanvasHover($event)"
+    role="img"
+    [attr.aria-label]="'Gráfico do tipo ' + config().type"
+  ></canvas>
+</div>

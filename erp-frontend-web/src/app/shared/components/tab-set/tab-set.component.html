@@ -1,0 +1,57 @@
+<div class="tab-set" [class.full-width]="fullWidth()">
+  <!-- Tab List -->
+  <div
+    role="tablist"
+    class="tab-list"
+    [class]="getVariantClasses()"
+    [class.full-width]="fullWidth()"
+  >
+    @for (tab of tabsList(); track tab.id()) {
+      <button
+        role="tab"
+        [id]="'tab-' + tab.id()"
+        [attr.aria-selected]="activeId() === tab.id()"
+        [attr.aria-controls]="'panel-' + tab.id()"
+        [attr.aria-disabled]="tab.disabled()"
+        [class]="getTabClasses(tab)"
+        [disabled]="tab.disabled()"
+        (click)="selectTab(tab.id())"
+        type="button"
+      >
+        @if (tab.icon()) {
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="tab.icon()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+          </svg>
+        }
+        <span>{{ tab.label() }}</span>
+        @if (tab.badge() !== '') {
+          <span class="badge badge-xs" [class]="getBadgeClass(tab.badgeVariant())">
+            {{ tab.badge() }}
+          </span>
+        }
+      </button>
+    }
+  </div>
+
+  <!-- Tab Panels -->
+  <div class="tab-panels">
+    @for (tab of tabsList(); track tab.id()) {
+      @if (activeId() === tab.id() || !lazyLoad()) {
+        <div
+          role="tabpanel"
+          [id]="'panel-' + tab.id()"
+          [attr.aria-labelledby]="'tab-' + tab.id()"
+          [hidden]="activeId() !== tab.id()"
+          class="tab-panel"
+          [class.hidden]="activeId() !== tab.id()"
+        >
+          <ng-container [ngTemplateOutlet]="tabTemplate(tab)"></ng-container>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+<ng-template #tabTemplate let-tab>
+  <ng-content select="[tabId='" + tab.id() + "']"></ng-content>
+</ng-template>

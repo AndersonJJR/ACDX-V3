@@ -1,0 +1,21 @@
+:host {
+  display: block;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  :host {
+    @apply mb-4;
+  }
+
+  h1 {
+    @apply text-xl;
+  }
+}

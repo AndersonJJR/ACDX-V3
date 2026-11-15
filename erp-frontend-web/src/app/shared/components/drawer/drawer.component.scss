@@ -1,0 +1,39 @@
+:host {
+  display: contents;
+}
+
+.drawer-open {
+  overflow: hidden;
+}
+
+/* Focus trap */
+#focusTrap:focus {
+  outline: none;
+}
+
+/* Scrollbar in drawer content */
+#focusTrap {
+  @apply scrollbar-thin;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .transition-transform {
+    transition: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .fixed.inset-0 {
+    position: static !important;
+  }
+
+  .drawer-open {
+    overflow: visible !important;
+  }
+
+  .flex.h-full {
+    display: block !important;
+  }
+}

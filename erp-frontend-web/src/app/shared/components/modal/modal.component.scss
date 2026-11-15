@@ -1,0 +1,70 @@
+:host {
+  display: contents;
+}
+
+.modal-open {
+  overflow: hidden;
+}
+
+/* Focus trap */
+#focusTrap:focus {
+  outline: none;
+}
+
+/* Animation */
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalLeave {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+}
+
+.transform {
+  animation: modalEnter 0.2s ease-out;
+}
+
+.transform.scale-95.opacity-0 {
+  animation: modalLeave 0.2s ease-in forwards;
+}
+
+/* Scrollbar in modal content */
+#focusTrap {
+  @apply scrollbar-thin;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .transform {
+    animation: none;
+  }
+
+  .transition-all {
+    transition: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .fixed.inset-0 {
+    position: static !important;
+  }
+
+  .modal-open {
+    overflow: visible !important;
+  }
+}

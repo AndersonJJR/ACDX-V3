@@ -3,7 +3,6 @@ export default {
   content: [
     "./src/**/*.{html,ts}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -19,7 +18,6 @@ export default {
           800: '#202e61',
           900: '#1d2850',
           950: '#101630',
-          DEFAULT: '#0039A6', // Brazilian blue
         },
         success: {
           50: '#ecfdf3',
@@ -32,7 +30,6 @@ export default {
           700: '#137423',
           800: '#155e25',
           900: '#144d22',
-          DEFAULT: '#1db833',
         },
         warning: {
           50: '#fffbeb',
@@ -45,7 +42,6 @@ export default {
           700: '#b45309',
           800: '#92400e',
           900: '#78350f',
-          DEFAULT: '#f59e0b',
         },
         danger: {
           50: '#fef2f2',
@@ -58,7 +54,6 @@ export default {
           700: '#b91c1c',
           800: '#991b1b',
           900: '#7f1d1d',
-          DEFAULT: '#ef4444',
         },
         neutral: {
           50: '#fafafa',
@@ -86,8 +81,8 @@ export default {
         '4xl': '2rem',
       },
       boxShadow: {
-        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+        soft: '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+        card: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
       },
     },
   },

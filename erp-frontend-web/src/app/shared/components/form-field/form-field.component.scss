@@ -1,0 +1,137 @@
+:host {
+  display: block;
+}
+
+.form-field-wrapper {
+  @apply relative;
+}
+
+.form-field-wrapper.has-prefix input,
+.form-field-wrapper.has-prefix select,
+.form-field-wrapper.has-prefix textarea {
+  @apply pl-10;
+}
+
+.form-field-wrapper.has-suffix input,
+.form-field-wrapper.has-suffix select,
+.form-field-wrapper.has-suffix textarea {
+  @apply pr-10;
+}
+
+.form-field-wrapper.has-both input,
+.form-field-wrapper.has-both select,
+.form-field-wrapper.has-both textarea {
+  @apply pl-10 pr-10;
+}
+
+/* Input size variants */
+.input-sm {
+  @apply px-3 py-1.5 text-xs;
+}
+
+.input-md {
+  @apply px-3 py-2.5 text-sm;
+}
+
+.input-lg {
+  @apply px-4 py-3 text-base;
+}
+
+/* Select styles */
+select.input {
+  @apply appearance-none bg-no-repeat bg-right pr-10;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-size: 1.5rem 1.5rem;
+}
+
+select.input:focus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%232563eb' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+select.input:disabled {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* Dark mode select */
+.dark select.input {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+.dark select.input:focus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2360a5fa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* Textarea */
+textarea.input {
+  @apply resize-y min-h-[80px];
+}
+
+/* Focus ring for wrapper */
+.form-field-wrapper:focus-within {
+  @apply ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-neutral-950;
+}
+
+/* Error state */
+.form-field-wrapper.error input,
+.form-field-wrapper.error select,
+.form-field-wrapper.error textarea {
+  @apply border-danger-500 focus:border-danger-500 focus:ring-danger-500/20;
+}
+
+/* Disabled state */
+.form-field-wrapper.disabled input,
+.form-field-wrapper.disabled select,
+.form-field-wrapper.disabled textarea {
+  @apply bg-neutral-100 dark:bg-neutral-800 cursor-not-allowed;
+}
+
+/* Readonly state */
+.form-field-wrapper.readonly input,
+.form-field-wrapper.readonly select,
+.form-field-wrapper.readonly textarea {
+  @apply bg-neutral-50 dark:bg-neutral-800/50;
+}
+
+/* Placeholder styling */
+::placeholder {
+  @apply text-neutral-400 dark:text-neutral-500;
+}
+
+/* Autofill styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  box-shadow: 0 0 0 1000px white inset !important;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill,
+.dark textarea:-webkit-autofill:hover,
+.dark textarea:-webkit-autofill:focus,
+.dark select:-webkit-autofill,
+.dark select:-webkit-autofill:hover,
+.dark select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #171717 inset !important;
+  box-shadow: 0 0 0 1000px #171717 inset !important;
+  -webkit-text-fill-color: #fafafa !important;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  input,
+  select,
+  textarea,
+  button {
+    transition: none !important;
+  }
+}

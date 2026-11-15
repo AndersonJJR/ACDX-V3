@@ -1,0 +1,149 @@
+@use '../../../../styles/variables' as *;
+
+.admin-desk-layout {
+  @apply min-h-screen bg-gray-50;
+  
+  /* Scrollbar customization */
+  & ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  
+  & ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+  
+  & ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full hover:bg-gray-400;
+  }
+  
+  /* Focus visible styles */
+  & *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+}
+
+/* Sidebar animations */
+.menu-item {
+  @apply relative;
+  
+  /* Submenu animation */
+  > div:last-child {
+    @apply animate-submenu;
+  }
+}
+
+@keyframes submenu {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Active menu item indicator */
+.router-link-active {
+  @apply bg-primary-50 text-primary-700;
+  
+  &::before {
+    @apply absolute left-0 top-0 bottom-0 w-1 bg-primary-600;
+    content: '';
+  }
+}
+
+/* Collapsed sidebar tooltip */
+.w-20 .group:hover .tooltip {
+  @apply visible opacity-100;
+}
+
+.tooltip {
+  @apply absolute left-full ml-2 px-2 py-1 text-sm text-white bg-gray-900 rounded shadow-lg whitespace-nowrap z-50 invisible opacity-0 transition-opacity;
+}
+
+/* Mobile sidebar */
+@media (max-width: 1023px) {
+  .lg\:hidden {
+    @apply block;
+  }
+  
+  .lg\:pl-64 {
+    @apply pl-0;
+  }
+  
+  .fixed.inset-y-0.left-0 {
+    @apply transform transition-transform duration-300 ease-in-out;
+  }
+}
+
+/* Print styles */
+@media print {
+  .admin-desk-layout aside,
+  .admin-desk-layout header,
+  .admin-desk-layout app-breadcrumb {
+    @apply hidden !important;
+  }
+  
+  .admin-desk-layout main {
+    @apply p-0 !important;
+  }
+  
+  .admin-desk-layout .lg\:pl-64 {
+    @apply pl-0 !important;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .admin-desk-layout *,
+  .admin-desk-layout *::before,
+  .admin-desk-layout *::after {
+    @apply transition-none !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .admin-desk-layout {
+    @apply border-2 border-gray-900;
+  }
+  
+  .admin-desk-layout aside {
+    @apply border-r-2 border-gray-900;
+  }
+  
+  .admin-desk-layout header {
+    @apply border-b-2 border-gray-900;
+  }
+}
+
+/* Dark mode support (future) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-primary: #111827;
+    --color-bg-secondary: #1f2937;
+    --color-text-primary: #f9fafb;
+    --color-text-secondary: #d1d5db;
+    --color-border: #374151;
+  }
+  
+  .admin-desk-layout {
+    @apply bg-gray-900;
+  }
+  
+  .admin-desk-layout aside,
+  .admin-desk-layout header {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  .admin-desk-layout a,
+  .admin-desk-layout button {
+    @apply text-gray-100 hover:bg-gray-700;
+  }
+  
+  .admin-desk-layout .router-link-active {
+    @apply bg-primary-900/30 text-primary-300;
+  }
+}

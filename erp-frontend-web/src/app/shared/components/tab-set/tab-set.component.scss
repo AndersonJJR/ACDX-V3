@@ -1,0 +1,124 @@
+:host {
+  display: block;
+}
+
+.tab-set {
+  @apply w-full;
+}
+
+.tab-set.full-width .tab-list {
+  @apply justify-stretch;
+}
+
+.tab-set.full-width .tab-btn {
+  @apply flex-1 justify-center;
+}
+
+/* Tab List */
+.tab-list {
+  @apply flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1;
+}
+
+/* Variants */
+.tab-line .tab-list {
+  @apply bg-transparent p-0 border-b border-neutral-200 dark:border-neutral-700;
+}
+
+.tab-pills .tab-list {
+  @apply bg-neutral-100 dark:bg-neutral-800;
+}
+
+.tab-enclosed .tab-list {
+  @apply bg-neutral-100 dark:bg-neutral-800 rounded-lg;
+}
+
+.tab-enclosed .tab-btn:first-child {
+  @apply rounded-l-lg;
+}
+
+.tab-enclosed .tab-btn:last-child {
+  @apply rounded-r-lg;
+}
+
+/* Tab Button */
+.tab-btn {
+  @apply relative inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-400 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.tab-btn:hover:not(.disabled):not(.active) {
+  @apply text-neutral-900 dark:text-neutral-100 bg-neutral-100 dark:bg-neutral-700;
+}
+
+.tab-line .tab-btn {
+  @apply rounded-none border-b-2 border-transparent -mb-px;
+}
+
+.tab-line .tab-btn.active {
+  @apply text-primary-600 dark:text-primary-400 border-primary-600 dark:border-primary-400;
+}
+
+.tab-line .tab-btn:hover:not(.disabled):not(.active) {
+  @apply border-neutral-300 dark:border-neutral-600;
+}
+
+.tab-pills .tab-btn.active {
+  @apply bg-white dark:bg-neutral-900 text-primary-600 dark:text-primary-400 shadow-card;
+}
+
+.tab-enclosed .tab-btn.active {
+  @apply bg-white dark:bg-neutral-900 text-primary-600 dark:text-primary-400 shadow-card;
+}
+
+/* Badge */
+.badge-xs {
+  @apply px-1.5 py-0.5 text-[10px];
+}
+
+/* Tab Panel */
+.tab-panel {
+  @apply mt-4;
+}
+
+.tab-panel.hidden {
+  @apply hidden;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-panel:not(.hidden) {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tab-btn,
+  .tab-panel {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .tab-btn {
+    @apply border-b-2 border-transparent;
+  }
+
+  .tab-btn.active {
+    @apply border-primary-600 text-primary-600;
+  }
+
+  .tab-panel.hidden {
+    @apply block !important;
+  }
+}

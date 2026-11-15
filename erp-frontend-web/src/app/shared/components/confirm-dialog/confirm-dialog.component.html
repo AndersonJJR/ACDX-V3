@@ -1,0 +1,17 @@
+<app-modal
+  [isOpen]="isOpen()"
+  [config]="modalConfig()"
+  (closed)="onClosed()"
+  (actionClick)="onActionClick($event)"
+>
+  <div class="flex items-start gap-4">
+    <div class="flex-shrink-0 mt-1" [class]="getIconColorClass()">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path [attr.d]="getIcon()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+      </svg>
+    </div>
+    <div class="flex-1">
+      <p class="text-neutral-900 dark:text-neutral-100">{{ config().message }}</p>
+    </div>
+  </div>
+</app-modal>

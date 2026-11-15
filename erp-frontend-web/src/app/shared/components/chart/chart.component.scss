@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+.chart-container {
+  @apply relative w-full;
+  position: relative;
+  width: 100%;
+}
+
+.chart-container canvas {
+  @apply w-full h-full;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Dark mode adjustments */
+.dark .chart-container canvas {
+  /* Chart.js handles dark mode via options */
+}
+
+/* Print styles */
+@media print {
+  .chart-container canvas {
+    @apply max-w-full;
+  }
+}

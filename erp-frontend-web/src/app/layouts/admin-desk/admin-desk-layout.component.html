@@ -1,0 +1,300 @@
+<div class="admin-desk-layout min-h-screen bg-gray-50">
+  <!-- Mobile Sidebar Overlay -->
+  @if (mobileSidebarOpen()) {
+    <div 
+      class="fixed inset-0 z-40 bg-black/50 lg:hidden"
+      (click)="closeMobileSidebar()"
+      aria-hidden="true"
+    ></div>
+  }
+
+  <!-- Sidebar -->
+  <aside 
+    class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0"
+    [class.-translate-x-full]="mobileSidebarOpen() === false && isMobile()"
+    [class.w-20]="sidebarCollapsed() && !isMobile()"
+    [class.w-64]="!sidebarCollapsed() || isMobile()"
+    aria-label="Menu principal"
+  >
+    <!-- Logo -->
+    <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200">
+      @if (!sidebarCollapsed() || isMobile()) {
+        <a routerLink="/dashboard" class="flex items-center space-x-2">
+          <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 16l4-16m-4 16l-4-16m4 16l-4-16"/>
+            </svg>
+          </div>
+          <span class="font-bold text-xl text-gray-900">ERP Brazil</span>
+        </a>
+      } @else {
+        <a routerLink="/dashboard" class="flex items-center justify-center">
+          <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 16l4-16m-4 16l-4-16m4 16l-4-16"/>
+            </svg>
+          </div>
+        </a>
+      }
+      
+      @if (!isMobile()) {
+        <button 
+          type="button"
+          (click)="toggleSidebar()"
+          class="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          [attr.aria-label]="sidebarCollapsed() ? 'Expandir menu' : 'Colapsar menu'"
+          aria-expanded="false"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              [attr.d]="sidebarCollapsed() ? 'M11 19l-7-7 7-7m8 14l-7-7 7-7' : 'M15 19l-7-7 7-7m8 14l-7-7 7-7'"/>
+          </svg>
+        </button>
+      }
+    </div>
+
+    <!-- Navigation Menu -->
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1" aria-label="Navegação principal">
+      @for (menu of getMenuItems(); track menu.key) {
+        @if (hasMenuChildren(menu)) {
+          <!-- Menu with Submenu -->
+          <div class="menu-item">
+            <button 
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              (click)="toggleSubmenu(menu.key)"
+              [attr.aria-expanded]="isSubmenuOpen(menu.key)"
+              aria-controls="submenu-{{menu.key}}"
+            >
+              <div class="flex items-center space-x-3">
+                <span class="text-gray-400" [innerHTML]="getMenuIcon(menu)"></span>
+                @if (!sidebarCollapsed() || isMobile()) {
+                  <span class="font-medium truncate">{{ menu.label }}</span>
+                }
+              </div>
+              @if (!sidebarCollapsed() || isMobile()) {
+                <svg class="w-5 h-5 text-gray-400 transition-transform" 
+                  [class.rotate-90]="isSubmenuOpen(menu.key)"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              }
+            </button>
+            
+            <!-- Submenu -->
+            <div 
+              id="submenu-{{menu.key}}"
+              class="mt-1 ml-8 border-l-2 border-gray-200 pl-3"
+              [class.hidden]="!isSubmenuOpen(menu.key)"
+            >
+              @for (child of getVisibleChildren(menu); track child.key) {
+                <a 
+                  [routerLink]="child.route"
+                  routerLinkActive="bg-primary-50 text-primary-700"
+                  class="flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                  (click)="closeMobileSidebar()"
+                >
+                  <span class="text-gray-400 mr-2" [innerHTML]="getChildIcon(child)"></span>
+                  <span class="truncate">{{ child.label }}</span>
+                </a>
+              }
+            </div>
+          </div>
+        } @else {
+          <!-- Simple Menu Item -->
+          <a 
+            [routerLink]="menu.route"
+            routerLinkActive="bg-primary-50 text-primary-700"
+            class="flex items-center px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+            (click)="closeMobileSidebar()"
+            [title]="sidebarCollapsed() && !isMobile() ? menu.label : ''"
+          >
+            <span class="text-gray-400" [innerHTML]="getMenuIcon(menu)"></span>
+            @if (!sidebarCollapsed() || isMobile()) {
+              <span class="ml-3 font-medium truncate">{{ menu.label }}</span>
+            }
+          </a>
+        }
+      }
+    </nav>
+
+    <!-- Footer -->
+    <div class="p-4 border-t border-gray-200">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+        </div>
+        @if (!sidebarCollapsed() || isMobile()) {
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">{{ company()?.tradeName || company()?.name }}</p>
+            <p class="text-xs text-gray-500 truncate">{{ company()?.cnpj }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="lg:pl-64 transition-all duration-300" [class.pl-20]="sidebarCollapsed() && !isMobile()">
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+        <!-- Mobile Menu Button -->
+        <button 
+          type="button"
+          (click)="toggleSidebar()"
+          class="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          aria-label="Abrir menu"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+
+        <!-- Page Header Slot -->
+        <div class="flex-1 min-w-0">
+          <ng-content select="[slot=header]"></ng-content>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="flex items-center space-x-2">
+          <!-- Search -->
+          @if (config().showSearch !== false) {
+            <div class="relative hidden sm:block">
+              <input 
+                type="text"
+                (input)="onSearchChange($event)"
+                placeholder="Buscar..."
+                class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                aria-label="Buscar"
+              >
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+          }
+
+          <!-- Notifications -->
+          @if (config().showNotifications !== false) {
+            <div class="relative">
+              <button 
+                type="button"
+                (click)="toggleNotifications()"
+                class="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors relative"
+                aria-label="Notificações"
+                [attr.aria-expanded]="notificationsOpen()"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span class="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+              </button>
+
+              @if (notificationsOpen()) {
+                <div class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <div class="px-4 py-2 border-b border-gray-200">
+                    <h3 class="font-semibold text-gray-900">Notificações</h3>
+                  </div>
+                  <div class="max-h-96 overflow-y-auto">
+                    <a href="#" class="block px-4 py-3 hover:bg-gray-50">
+                      <p class="text-sm font-medium text-gray-900">Nova atualização do sistema</p>
+                      <p class="text-sm text-gray-500 mt-1">Versão 1.2.0 disponível</p>
+                      <p class="text-xs text-gray-400 mt-1">há 10 minutos</p>
+                    </a>
+                    <a href="#" class="block px-4 py-3 hover:bg-gray-50">
+                      <p class="text-sm font-medium text-gray-900">Fatura vencida</p>
+                      <p class="text-sm text-gray-500 mt-1">Fatura #12345 venceu ontem</p>
+                      <p class="text-xs text-gray-400 mt-1">há 1 hora</p>
+                    </a>
+                  </div>
+                  <div class="px-4 py-2 border-t border-gray-200">
+                    <a href="#" class="text-sm text-primary-600 hover:text-primary-700">Ver todas as notificações</a>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- User Menu -->
+          <div class="relative">
+            <button 
+              type="button"
+              (click)="toggleUserMenu()"
+              class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Menu do usuário"
+              [attr.aria-expanded]="userMenuOpen()"
+            >
+              <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                <span class="text-sm font-medium text-primary-700">
+                  {{ user()?.name?.charAt(0).toUpperCase() || 'U' }}
+                </span>
+              </div>
+              @if (!sidebarCollapsed() || isMobile()) {
+                <span class="text-sm font-medium text-gray-700 hidden sm:block">{{ user()?.name }}</span>
+              }
+              <svg class="w-4 h-4 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+
+            @if (userMenuOpen()) {
+              <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <div class="px-4 py-2 border-b border-gray-200">
+                  <p class="text-sm font-medium text-gray-900">{{ user()?.name }}</p>
+                  <p class="text-sm text-gray-500 truncate">{{ user()?.email }}</p>
+                </div>
+                <a 
+                  href="#" 
+                  class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  (click)="onProfileClick()"
+                >
+                  <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                  </svg>
+                  Meu Perfil
+                </a>
+                @if (authService.getEnabledModules().length > 1) {
+                  <a 
+                    href="#" 
+                    class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    (click)="onCompanySwitch()"
+                  >
+                    <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    </svg>
+                    Trocar Empresa
+                  </a>
+                }
+                <hr class="my-1 border-gray-200">
+                <button 
+                  type="button"
+                  class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                  (click)="onLogout()"
+                >
+                  <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                  </svg>
+                  Sair
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="p-4 sm:p-6 lg:p-8" id="main-content" role="main">
+      <!-- Toast Container -->
+      <app-toast-container></app-toast-container>
+
+      <!-- Breadcrumb -->
+      <app-breadcrumb class="mb-6"></app-breadcrumb>
+
+      <!-- Page Content -->
+      <ng-content></ng-content>
+    </main>
+  </div>
+</div>

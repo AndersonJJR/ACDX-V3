@@ -1,0 +1,124 @@
+@if (isVisible()) {
+  <div
+    class="fixed inset-0 z-50 overflow-hidden"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="config().title ? 'drawer-title' : null"
+    [attr.aria-describedby]="config().description ? 'drawer-description' : null"
+  >
+    <!-- Backdrop -->
+    <div
+      class="fixed inset-0 bg-black/50 transition-opacity duration-300"
+      [class.opacity-100]="isOpen()"
+      [class.opacity-0]="!isOpen()"
+      (click)="onBackdropClick($event)"
+      aria-hidden="true"
+    ></div>
+
+    <!-- Drawer Container -->
+    <div class="flex h-full">
+      @if (position() === 'left') {
+        <div class="flex-1" aria-hidden="true"></div>
+      }
+
+      <div
+        #drawerContainer
+        class="relative flex flex-col h-full bg-white dark:bg-neutral-900 shadow-soft transition-transform duration-300 ease-in-out"
+        [class]="sizeClass()"
+        [class]="positionClass()"
+        [class.translate-x-full]="position() === 'right' && !isOpen()"
+        [class.-translate-x-full]="position() === 'left' && !isOpen()"
+        [class.translate-x-0]="isOpen()"
+      >
+        <!-- Header -->
+        @if (showHeader()) {
+          <div class="flex items-start justify-between p-6 border-b border-neutral-200 dark:border-neutral-800 flex-shrink-0">
+            <div>
+              @if (config().title) {
+                <h2 id="drawer-title" class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                  {{ config().title }}
+                </h2>
+              }
+              @if (config().description) {
+                <p id="drawer-description" class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                  {{ config().description }}
+                </p>
+              }
+            </div>
+
+            @if (config().closable !== false) {
+              <button
+                type="button"
+                class="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                (click)="onCloseClick()"
+                aria-label="Fechar painel"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Header Actions -->
+        @if (config().headerActions && config().headerActions.length > 0) {
+          <div class="flex items-center gap-2 p-4 border-b border-neutral-200 dark:border-neutral-800 flex-shrink-0">
+            @for (action of config().headerActions; track $index) {
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class]="getActionClass(action.variant || 'ghost')"
+                [disabled]="action.disabled"
+                (click)="onActionClick(action, $index)"
+              >
+                @if (action.icon) {
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path [attr.d]="action.icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+                  </svg>
+                }
+                {{ action.label }}
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Content -->
+        <div #focusTrap class="flex-1 overflow-y-auto p-6" tabindex="0">
+          <ng-content></ng-content>
+        </div>
+
+        <!-- Footer -->
+        @if (showFooter()) {
+          <div class="flex items-center justify-end gap-3 p-6 border-t border-neutral-200 dark:border-neutral-800 flex-shrink-0">
+            @for (action of config().footerActions; track $index) {
+              <button
+                type="button"
+                class="btn"
+                [class]="getActionClass(action.variant || 'primary')"
+                [disabled]="action.disabled"
+                (click)="onActionClick(action, $index)"
+              >
+                @if (action.loading) {
+                  <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                } @else if (action.icon) {
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path [attr.d]="action.icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+                  </svg>
+                }
+                {{ action.label }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      @if (position() === 'right') {
+        <div class="flex-1" aria-hidden="true"></div>
+      }
+    </div>
+  </div>
+}

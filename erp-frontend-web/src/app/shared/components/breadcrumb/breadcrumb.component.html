@@ -1,0 +1,42 @@
+<nav class="flex items-center gap-1.5" aria-label="Navegação" role="navigation">
+  <ol class="flex items-center gap-1.5 flex-wrap" role="list">
+    @for (item of displayedBreadcrumbs(); track item.label; let last = $last) {
+      <li class="flex items-center gap-1.5">
+        @if (!$first) {
+          <svg class="w-4 h-4 text-neutral-400 dark:text-neutral-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="getSeparatorIcon()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+          </svg>
+        }
+
+        @if (item.url && !item.disabled && !last) {
+          <a
+            [routerLink]="item.url"
+            class="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+            (click)="onItemClick(item, $event)"
+            [attr.aria-current]="last ? 'page' : null"
+          >
+            @if (item.icon) {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path [attr.d]="item.icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+              </svg>
+            }
+            <span>{{ item.label }}</span>
+          </a>
+        } @else {
+          <span
+            class="flex items-center gap-1.5 text-sm"
+            [class]="item.disabled ? 'text-neutral-400 dark:text-neutral-500' : 'font-medium text-neutral-900 dark:text-neutral-100'"
+            [attr.aria-current]="last ? 'page' : null"
+          >
+            @if (item.icon && !item.disabled) {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path [attr.d]="item.icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+              </svg>
+            }
+            <span>{{ item.label }}</span>
+          </span>
+        }
+      </li>
+    }
+  </ol>
+</nav>
