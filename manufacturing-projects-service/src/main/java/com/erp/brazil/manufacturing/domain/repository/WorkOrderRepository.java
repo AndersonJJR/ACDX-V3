@@ -1,8 +1,8 @@
 package com.erp.brazil.manufacturing.domain.repository;
 
 import com.erp.brazil.manufacturing.domain.model.WorkOrder;
-import com.erp.brazil.manufacturing.domain.model.WorkOrder.Priority;
 import com.erp.brazil.manufacturing.domain.model.WorkOrder.WorkOrderStatus;
+import com.erp.brazil.manufacturing.domain.model.WorkOrder.Priority;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,25 +26,19 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, UUID> {
 
     List<WorkOrder> findByWorkCenterId(UUID workCenterId);
 
-    List<WorkOrder> findByWorkStationId(UUID workStationId);
+    List<WorkOrder> findByWorkCenterIdAndStatus(UUID workCenterId, WorkOrderStatus status);
 
     List<WorkOrder> findByStatus(WorkOrderStatus status);
 
-    List<WorkOrder> findByStatusIn(List<WorkOrderStatus> statuses);
-
-    List<WorkOrder> findByAssignedTo(String assignedTo);
-
-    Page<WorkOrder> findByWorkCenterIdAndStatus(UUID workCenterId, WorkOrderStatus status, Pageable pageable);
-
     Page<WorkOrder> findByStatus(WorkOrderStatus status, Pageable pageable);
 
-    @Query("SELECT wo FROM WorkOrder wo WHERE wo.plannedStartDate BETWEEN :start AND :end")
-    List<WorkOrder> findByPlannedStartDateBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    Page<WorkOrder> findByWorkCenterId(UUID workCenterId, Pageable pageable);
 
-    @Query("SELECT wo FROM WorkOrder wo WHERE wo.status IN :statuses AND wo.plannedStartDate <= :now ORDER BY wo.priority DESC, wo.plannedStartDate ASC")
-    List<WorkOrder> findDispatchableOrders(@Param("statuses") List<WorkOrderStatus> statuses, @Param("now") LocalDateTime now);
+    @Query("SELECT wo FROM WorkOrder wo WHERE wo.workCenterId = :workCenterId AND wo.plannedStartDate BETWEEN :startDate AND :endDate ORDER BY wo.plannedStartDate ASC")
+    List<WorkOrder> findByWorkCenterAndDateRange(@Param("workCenterId") UUID workCenterId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    List<WorkOrder> findByPriorityAndStatus(Priority priority, WorkOrderStatus status);
+    @Query("SELECT wo FROM WorkOrder wo WHERE wo.assignedTo = :assignedTo AND wo.status IN ('RELEASED', 'IN_PROGRESS') ORDER BY wo.plannedStartDate ASC")
+    List<WorkOrder> findByAssigneeAndActiveStatus(@Param("assignedTo") String assignedTo);
 
     boolean existsByOrderNumber(String orderNumber);
 

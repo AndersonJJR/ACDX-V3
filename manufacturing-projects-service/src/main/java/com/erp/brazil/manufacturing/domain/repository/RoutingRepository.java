@@ -8,7 +8,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,16 +15,18 @@ import java.util.UUID;
 @Repository
 public interface RoutingRepository extends JpaRepository<Routing, UUID> {
 
-    Optional<Routing> findByProductIdAndStatusAndEffectiveFromLessThanEqualAndEffectiveToGreaterThanEqual(
-            UUID productId, RoutingStatus status, LocalDateTime effectiveFrom, LocalDateTime effectiveTo);
+    List<Routing> findByProductId(UUID productId);
 
-    List<Routing> findByProductIdAndStatusOrderByVersionDesc(UUID productId, RoutingStatus status);
+    List<Routing> findByProductIdAndStatus(UUID productId, RoutingStatus status);
 
-    List<Routing> findByProductIdAndTypeAndStatus(UUID productId, RoutingType type, RoutingStatus status);
+    List<Routing> findByType(RoutingType type);
+
+    List<Routing> findByStatus(RoutingStatus status);
 
     Page<Routing> findByStatus(RoutingStatus status, Pageable pageable);
 
-    Page<Routing> findByProductId(UUID productId, Pageable pageable);
+    Optional<Routing> findByProductIdAndStatusAndEffectiveFromLessThanEqualAndEffectiveToGreaterThanEqual(
+            UUID productId, RoutingStatus status, java.time.LocalDateTime effectiveFrom, java.time.LocalDateTime effectiveTo);
 
     boolean existsByProductIdAndVersion(UUID productId, String version);
 }

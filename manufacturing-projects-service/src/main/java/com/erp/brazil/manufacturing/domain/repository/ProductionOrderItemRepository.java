@@ -3,6 +3,8 @@ package com.erp.brazil.manufacturing.domain.repository;
 import com.erp.brazil.manufacturing.domain.model.ProductionOrderItem;
 import com.erp.brazil.manufacturing.domain.model.ProductionOrderItem.ItemStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,7 +19,8 @@ public interface ProductionOrderItemRepository extends JpaRepository<ProductionO
 
     List<ProductionOrderItem> findByComponentId(UUID componentId);
 
-    List<ProductionOrderItem> findByBomItemId(UUID bomItemId);
+    @Query("SELECT poi FROM ProductionOrderItem poi WHERE poi.productionOrder.id = :prodOrderId AND poi.requiredQuantity > poi.issuedQuantity")
+    List<ProductionOrderItem> findWithRemainingQuantity(@Param("prodOrderId") UUID prodOrderId);
 
-    List<ProductionOrderItem> findByWarehouseId(UUID warehouseId);
+    boolean existsByProductionOrderIdAndComponentId(UUID productionOrderId, UUID componentId);
 }

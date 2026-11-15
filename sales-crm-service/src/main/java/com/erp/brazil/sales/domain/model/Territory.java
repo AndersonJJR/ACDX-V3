@@ -1,0 +1,68 @@
+package com.erp.brazil.sales.domain.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "territories")
+@Getter
+@Setter
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Territory extends BaseEntity {
+    
+    @Column(name = "territory_code", length = 20, unique = true, nullable = false)
+    private String territoryCode;
+    
+    @Column(name = "name", length = 100, nullable = false)
+    private String name;
+    
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+    
+    @Column(name = "state", length = 2)
+    private String state;
+    
+    @Column(name = "cities", columnDefinition = "TEXT")
+    private String cities; // JSON array of city names/IBGE codes
+    
+    @Column(name = "zip_code_ranges", columnDefinition = "TEXT")
+    private String zipCodeRanges; // JSON array of zip code ranges
+    
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_territory_id")
+    private Territory parentTerritory;
+    
+    @OneToMany(mappedBy = "parentTerritory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Territory> subTerritories = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Customer> customers = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Lead> leads = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Opportunity> opportunities = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<SalesPerson> salesPersons = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "territory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<CommissionRule> commissionRules = new ArrayList<>();
+}

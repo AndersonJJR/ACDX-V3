@@ -16,5 +16,5 @@ public interface RoutingOperationRepository extends JpaRepository<RoutingOperati
 
     List<RoutingOperation> findByRoutingIdAndWorkCenterId(UUID routingId, UUID workCenterId);
 
-    List<RoutingOperation> findByRoutingIdAndIsOutsourcedTrue(UUID routingId);
+    boolean existsByRoutingIdAndSequence(UUID routingId, Integer sequence);
 }

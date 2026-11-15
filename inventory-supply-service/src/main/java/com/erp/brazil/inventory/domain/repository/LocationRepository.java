@@ -1,7 +1,8 @@
 package com.erp.brazil.inventory.domain.repository;
 
 import com.erp.brazil.inventory.domain.model.Location;
-import com.erp.brazil.inventory.domain.model.Warehouse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,14 +15,22 @@ import java.util.UUID;
 @Repository
 public interface LocationRepository extends JpaRepository<Location, UUID> {
 
-    Optional<Location> findByCompanyIdAndWarehouseIdAndCode(UUID companyId, UUID warehouseId, String code);
+    Optional<Location> findByWarehouseIdAndCode(UUID warehouseId, String code);
 
-    List<Location> findByCompanyIdAndWarehouseIdAndIsActiveTrue(UUID companyId, UUID warehouseId);
+    List<Location> findByWarehouseId(UUID warehouseId);
 
-    List<Location> findByCompanyIdAndIsActiveTrue(UUID companyId);
+    Page<Location> findByWarehouseId(UUID warehouseId, Pageable pageable);
 
-    @Query("SELECT l FROM Location l WHERE l.companyId = :companyId AND l.warehouseId = :warehouseId AND l.locationType = :type AND l.isActive = true")
-    List<Location> findByWarehouseAndType(@Param("companyId") UUID companyId, @Param("warehouseId") UUID warehouseId, @Param("type") Location.LocationType type);
+    List<Location> findByWarehouseIdAndIsActiveTrue(UUID warehouseId);
 
-    boolean existsByCompanyIdAndWarehouseIdAndCodeAndIdNot(UUID companyId, UUID warehouseId, String code, UUID id);
+    List<Location> findByWarehouseIdAndLocationType(UUID warehouseId, Location.LocationType locationType);
+
+    List<Location> findByWarehouseIdAndIsPickableTrue(UUID warehouseId);
+
+    List<Location> findByWarehouseIdAndIsReceivableTrue(UUID warehouseId);
+
+    boolean existsByWarehouseIdAndCodeAndIdNot(UUID warehouseId, String code, UUID id);
+
+    @Query("SELECT l FROM Location l WHERE l.warehouseId = :warehouseId AND l.isActive = true AND l.isPickable = true ORDER BY l.aisle, l.rack, l.shelf, l.bin")
+    List<Location> findPickableLocationsOrdered(@Param("warehouseId") UUID warehouseId);
 }
