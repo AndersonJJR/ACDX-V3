@@ -142,25 +142,25 @@ public class ProductionOrderDto {
         private Integer sequence;
         private UUID routingOperationId;
         private UUID workCenterId;
-        private UUID workStationId.
-        private String operationName.
-        private String description.
-        private BigDecimal plannedSetupTimeMinutes.
-        private BigDecimal plannedRunTimeMinutes.
-        private BigDecimal actualSetupTimeMinutes.
-        private BigDecimal actualRunTimeMinutes.
-        private Integer crewSize.
-        private Boolean isOutsourced.
-        private UUID vendorId.
-        private UUID subcontractingOrderId.
-        private String status.
-        private LocalDateTime plannedStartDate.
-        private LocalDateTime plannedEndDate.
-        private LocalDateTime actualStartDate.
-        private LocalDateTime actualEndDate.
-        private BigDecimal completedQuantity.
-        private BigDecimal scrappedQuantity.
-        private String notes.
+        private UUID workStationId;
+        private String operationName;
+        private String description;
+        private BigDecimal plannedSetupTimeMinutes;
+        private BigDecimal plannedRunTimeMinutes;
+        private BigDecimal actualSetupTimeMinutes;
+        private BigDecimal actualRunTimeMinutes;
+        private Integer crewSize;
+        private Boolean isOutsourced;
+        private UUID vendorId;
+        private UUID subcontractingOrderId;
+        private String status;
+        private LocalDateTime plannedStartDate;
+        private LocalDateTime plannedEndDate;
+        private LocalDateTime actualStartDate;
+        private LocalDateTime actualEndDate;
+        private BigDecimal completedQuantity;
+        private BigDecimal scrappedQuantity;
+        private String notes;
 
         public static ProductionOrderOperationDto fromEntity(ProductionOrderOperation op) {
             return ProductionOrderOperationDto.builder()
@@ -196,19 +196,19 @@ public class ProductionOrderDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CreateProductionOrderRequest {
-        private UUID productId.
-        private BigDecimal orderedQuantity.
-        private String unitOfMeasure.
-        private String orderType.
-        private String priority.
-        private UUID salesOrderId.
-        private UUID salesOrderItemId.
-        private UUID projectId.
-        private UUID warehouseId.
-        private LocalDateTime plannedStartDate.
-        private LocalDateTime plannedEndDate.
-        private String description.
-        private String notes.
+        private UUID productId;
+        private BigDecimal orderedQuantity;
+        private String unitOfMeasure;
+        private String orderType;
+        private String priority;
+        private UUID salesOrderId;
+        private UUID salesOrderItemId;
+        private UUID projectId;
+        private UUID warehouseId;
+        private LocalDateTime plannedStartDate;
+        private LocalDateTime plannedEndDate;
+        private String description;
+        private String notes;
     }
 
     @Data
@@ -216,7 +216,7 @@ public class ProductionOrderDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ReleaseProductionOrderRequest {
-        private String releasedBy.
+        private String releasedBy;
     }
 
     @Data
@@ -224,9 +224,9 @@ public class ProductionOrderDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ReportProductionRequest {
-        private BigDecimal producedQuantity.
-        private BigDecimal scrappedQuantity.
-        private String notes.
-        private String reportedBy.
+        private BigDecimal producedQuantity;
+        private BigDecimal scrappedQuantity;
+        private String notes;
+        private String reportedBy;
     }
 }

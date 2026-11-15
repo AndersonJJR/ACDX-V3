@@ -53,67 +53,67 @@ public class Timesheet {
     private LocalDate periodStart;
 
     @Column(name = "period_end")
-    private LocalDate periodEnd.
+    private LocalDate periodEnd;
 
     @Column(name = "hours_worked", precision = 5, scale = 2)
     private BigDecimal hoursWorked = BigDecimal.ZERO;
 
     @Column(name = "overtime_hours", precision = 5, scale = 2)
-    private BigDecimal overtimeHours = BigDecimal.ZERO.
+    private BigDecimal overtimeHours = BigDecimal.ZERO;
 
     @Column(name = "description", length = 1000)
-    private String description.
+    private String description;
 
     @Column(name = "is_billable")
-    private Boolean isBillable = true.
+    private Boolean isBillable = true;
 
     @Column(name = "billing_rate", precision = 19, scale = 4)
-    private BigDecimal billingRate.
+    private BigDecimal billingRate;
 
     @Column(name = "cost_rate", precision = 19, scale = 4)
-    private BigDecimal costRate.
+    private BigDecimal costRate;
 
     @Column(name = "currency", length = 3)
-    private String currency = "BRL".
+    private String currency = "BRL";
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private TimesheetStatus status = TimesheetStatus.DRAFT.
+    private TimesheetStatus status = TimesheetStatus.DRAFT;
 
     @Column(name = "submitted_at")
-    private LocalDateTime submittedAt.
+    private LocalDateTime submittedAt;
 
     @Column(name = "approved_at")
-    private LocalDateTime approvedAt.
+    private LocalDateTime approvedAt;
 
     @Column(name = "approved_by", length = 100)
-    private String approvedBy.
+    private String approvedBy;
 
     @Column(name = "rejected_at")
-    private LocalDateTime rejectedAt.
+    private LocalDateTime rejectedAt;
 
     @Column(name = "rejected_by", length = 100)
-    private String rejectedBy.
+    private String rejectedBy;
 
     @Column(name = "rejection_reason", length = 500)
-    private String rejectionReason.
+    private String rejectionReason;
 
     @Column(name = "invoice_id")
-    private UUID invoiceId.
+    private UUID invoiceId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt.
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt.
+    private LocalDateTime updatedAt;
 
     @Column(name = "created_by", length = 100)
-    private String createdBy.
+    private String createdBy;
 
     @Version
-    private Long versionLock.
+    private Long versionLock;
 
     public enum TimesheetStatus {
         DRAFT,

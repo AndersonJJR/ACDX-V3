@@ -99,11 +99,11 @@ public class SubcontractingDto {
         private BigDecimal sentQuantity;
         private BigDecimal returnedQuantity;
         private BigDecimal consumedQuantity;
-        private BigDecimal scrappedQuantity.
-        private String unitOfMeasure.
-        private UUID warehouseId.
-        private UUID locationId.
-        private String notes.
+        private BigDecimal scrappedQuantity;
+        private String unitOfMeasure;
+        private UUID warehouseId;
+        private UUID locationId;
+        private String notes;
 
         public static SubcontractingOrderItemDto fromEntity(SubcontractingOrderItem item) {
             return SubcontractingOrderItemDto.builder()
@@ -129,23 +129,23 @@ public class SubcontractingDto {
     @AllArgsConstructor
     public static class SubcontractingReceiptDto {
         private UUID id;
-        private String receiptNumber.
-        private LocalDateTime receiptDate.
-        private UUID productId.
-        private BigDecimal receivedQuantity.
-        private BigDecimal acceptedQuantity.
-        private BigDecimal rejectedQuantity.
-        private String unitOfMeasure.
-        private UUID warehouseId.
-        private UUID locationId.
-        private UUID qualityInspectionId.
-        private String status.
-        private String notes.
-        private String vendorInvoiceNumber.
-        private LocalDateTime vendorInvoiceDate.
-        private LocalDateTime createdAt.
-        private LocalDateTime updatedAt.
-        private String createdBy.
+        private String receiptNumber;
+        private LocalDateTime receiptDate;
+        private UUID productId;
+        private BigDecimal receivedQuantity;
+        private BigDecimal acceptedQuantity;
+        private BigDecimal rejectedQuantity;
+        private String unitOfMeasure;
+        private UUID warehouseId;
+        private UUID locationId;
+        private UUID qualityInspectionId;
+        private String status;
+        private String notes;
+        private String vendorInvoiceNumber;
+        private LocalDateTime vendorInvoiceDate;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+        private String createdBy;
 
         public static SubcontractingReceiptDto fromEntity(SubcontractingReceipt receipt) {
             return SubcontractingReceiptDto.builder()
@@ -176,17 +176,17 @@ public class SubcontractingDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CreateSubcontractingOrderRequest {
-        private UUID productionOrderId.
-        private UUID operationId.
-        private UUID vendorId.
-        private BigDecimal orderedQuantity.
-        private BigDecimal unitPrice.
-        private String currency.
-        private LocalDateTime plannedStartDate.
-        private LocalDateTime plannedEndDate.
-        private UUID warehouseId.
-        private List<CreateSubcontractItemRequest> items.
-        private String notes.
+        private UUID productionOrderId;
+        private UUID operationId;
+        private UUID vendorId;
+        private BigDecimal orderedQuantity;
+        private BigDecimal unitPrice;
+        private String currency;
+        private LocalDateTime plannedStartDate;
+        private LocalDateTime plannedEndDate;
+        private UUID warehouseId;
+        private List<CreateSubcontractItemRequest> items;
+        private String notes;
     }
 
     @Data
@@ -194,12 +194,12 @@ public class SubcontractingDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CreateSubcontractItemRequest {
-        private UUID componentId.
-        private String componentType.
-        private BigDecimal quantity.
-        private String unitOfMeasure.
-        private UUID warehouseId.
-        private UUID locationId.
+        private UUID componentId;
+        private String componentType;
+        private BigDecimal quantity;
+        private String unitOfMeasure;
+        private UUID warehouseId;
+        private UUID locationId;
     }
 
     @Data
@@ -207,7 +207,7 @@ public class SubcontractingDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SendMaterialsRequest {
-        private String sentBy.
+        private String sentBy;
     }
 
     @Data
@@ -215,15 +215,15 @@ public class SubcontractingDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ReceiveSubcontractedRequest {
-        private String receiptNumber.
-        private BigDecimal receivedQuantity.
-        private BigDecimal acceptedQuantity.
-        private BigDecimal rejectedQuantity.
-        private UUID warehouseId.
-        private UUID locationId.
-        private String vendorInvoiceNumber.
-        private LocalDateTime vendorInvoiceDate.
-        private String notes.
-        private String receivedBy.
+        private String receiptNumber;
+        private BigDecimal receivedQuantity;
+        private BigDecimal acceptedQuantity;
+        private BigDecimal rejectedQuantity;
+        private UUID warehouseId;
+        private UUID locationId;
+        private String vendorInvoiceNumber;
+        private LocalDateTime vendorInvoiceDate;
+        private String notes;
+        private String receivedBy;
     }
 }

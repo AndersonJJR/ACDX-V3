@@ -105,7 +105,7 @@ public class ProjectTask {
     private String currency = "BRL";
 
     @Column(name = "notes", length = 1000)
-    private String notes.
+    private String notes;
 
     @OneToMany(mappedBy = "parentTask", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default

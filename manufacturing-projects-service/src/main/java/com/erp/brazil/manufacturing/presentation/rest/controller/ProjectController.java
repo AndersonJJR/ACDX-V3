@@ -2,279 +2,218 @@ package com.erp.brazil.manufacturing.presentation.rest.controller;
 
 import com.erp.brazil.manufacturing.domain.model.Project;
 import com.erp.brazil.manufacturing.domain.model.ProjectTask;
+import com.erp.brazil.manufacturing.domain.model.Timesheet;
+import com.erp.brazil.manufacturing.domain.model.Project.ProjectStatus;
+import com.erp.brazil.manufacturing.domain.model.Project.ProjectType;
+import com.erp.brazil.manufacturing.domain.model.ProjectTask.TaskStatus;
+import com.erp.brazil.manufacturing.domain.model.ProjectTask.Priority;
 import com.erp.brazil.manufacturing.domain.repository.ProjectRepository;
 import com.erp.brazil.manufacturing.domain.repository.ProjectTaskRepository;
-import com.erp.brazil.manufacturing.presentation.rest.dto.ProjectDTO;
+import com.erp.brazil.manufacturing.domain.repository.TimesheetRepository;
+import com.erp.brazil.manufacturing.presentation.rest.dto.ProjectDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/projects")
+@RequiredArgsConstructor
+@Slf4j
+@Tag(name = "Projects", description = "Project management")
 public class ProjectController {
 
     private final ProjectRepository projectRepository;
-    private final ProjectTaskRepository taskRepository;
-
-    public ProjectController(ProjectRepository projectRepository, ProjectTaskRepository taskRepository) {
-        this.projectRepository = projectRepository;
-        this.taskRepository = taskRepository;
-    }
+    private final ProjectTaskRepository projectTaskRepository;
+    private final TimesheetRepository timesheetRepository;
 
     @PostMapping
-    public ResponseEntity<ProjectDTO.Response> create(@RequestBody ProjectDTO.Request request) {
-        Project project = mapToEntity(request);
-        Project saved = projectRepository.save(project);
-        return ResponseEntity.ok(mapToResponse(saved));
+    @Operation(summary = "Create a new project")
+    public ResponseEntity<ProjectDto.ProjectResponse> createProject(@Valid @RequestBody ProjectDto.CreateProjectRequest request) {
+        log.info("Creating project {}", request.getCode());
+
+        Project project = Project.builder()
+                .code(request.getCode())
+                .name(request.getName())
+                .description(request.getDescription())
+                .customerId(request.getCustomerId())
+                .projectManagerId(request.getProjectManagerId())
+                .projectType(ProjectType.valueOf(request.getProjectType()))
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .budgetHours(request.getBudgetHours() != null ? request.getBudgetHours() : BigDecimal.ZERO)
+                .budgetCost(request.getBudgetCost() != null ? request.getBudgetCost() : BigDecimal.ZERO)
+                .currency(request.getCurrency() != null ? request.getCurrency() : "BRL")
+                .billingType(request.getBillingType())
+                .contractValue(request.getContractValue() != null ? request.getContractValue() : BigDecimal.ZERO)
+                .notes(request.getNotes())
+                .status(ProjectStatus.PLANNING)
+                .build();
+
+        projectRepository.save(project);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ProjectDto.ProjectResponse.fromEntity(project));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProjectDTO.Response> getById(@PathVariable UUID id) {
-        return projectRepository.findById(id)
-            .map(this::mapToResponse)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/code/{code}")
-    public ResponseEntity<ProjectDTO.Response> getByCode(@PathVariable String code) {
-        return projectRepository.findByCode(code)
-            .map(this::mapToResponse)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+    @Operation(summary = "Get project by ID")
+    public ResponseEntity<ProjectDto.ProjectResponse> getProject(@PathVariable UUID id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
+        return ResponseEntity.ok(ProjectDto.ProjectResponse.fromEntity(project));
     }
 
     @GetMapping
-    public ResponseEntity<Page<ProjectDTO.Response>> getAll(Pageable pageable) {
-        Page<Project> page = projectRepository.findAll(pageable);
-        return ResponseEntity.ok(page.map(this::mapToResponse));
-    }
-
-    @GetMapping("/customer/{customerId}")
-    public ResponseEntity<Page<ProjectDTO.Response>> getByCustomerId(@PathVariable UUID customerId, Pageable pageable) {
-        Page<Project> page = projectRepository.findByCustomerId(customerId, pageable);
-        return ResponseEntity.ok(page.map(this::mapToResponse));
-    }
-
-    @GetMapping("/manager/{projectManagerId}")
-    public ResponseEntity<Page<ProjectDTO.Response>> getByProjectManagerId(@PathVariable UUID projectManagerId, Pageable pageable) {
-        Page<Project> page = projectRepository.findByProjectManagerId(projectManagerId, pageable);
-        return ResponseEntity.ok(page.map(this::mapToResponse));
-    }
-
-    @GetMapping("/status/{status}")
-    public ResponseEntity<Page<ProjectDTO.Response>> getByStatus(@PathVariable Project.ProjectStatus status, Pageable pageable) {
-        Page<Project> page = projectRepository.findByStatus(status, pageable);
-        return ResponseEntity.ok(page.map(this::mapToResponse));
+    @Operation(summary = "List projects with pagination")
+    public ResponseEntity<Page<ProjectDto.ProjectResponse>> listProjects(
+            @RequestParam(required = false) UUID customerId,
+            @RequestParam(required = false) UUID projectManagerId,
+            @RequestParam(required = false) String status,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<Project> projects;
+        if (customerId != null) {
+            projects = projectRepository.findByCustomerId(customerId, pageable);
+        } else if (projectManagerId != null) {
+            projects = projectRepository.findByProjectManagerId(projectManagerId, pageable);
+        } else if (status != null) {
+            projects = projectRepository.findByStatus(ProjectStatus.valueOf(status), pageable);
+        } else {
+            projects = projectRepository.findAll(pageable);
+        }
+        return ResponseEntity.ok(projects.map(ProjectDto.ProjectResponse::fromEntity));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProjectDTO.Response> update(@PathVariable UUID id, @RequestBody ProjectDTO.Request request) {
-        return projectRepository.findById(id)
-            .map(existing -> {
-                updateEntity(existing, request);
-                Project saved = projectRepository.save(existing);
-                return ResponseEntity.ok(mapToResponse(saved));
-            })
-            .orElse(ResponseEntity.notFound().build());
-    }
+    @Operation(summary = "Update project")
+    public ResponseEntity<ProjectDto.ProjectResponse> updateProject(@PathVariable UUID id, @Valid @RequestBody ProjectDto.CreateProjectRequest request) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        if (projectRepository.existsById(id)) {
-            projectRepository.deleteById(id);
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
-    }
-
-    // Task endpoints
-    @PostMapping("/{projectId}/tasks")
-    public ResponseEntity<ProjectDTO.TaskResponse> createTask(@PathVariable UUID projectId, @RequestBody ProjectDTO.TaskRequest request) {
-        return projectRepository.findById(projectId)
-            .map(project -> {
-                ProjectTask task = mapToTaskEntity(request);
-                task.setProject(project);
-                if (request.getParentTaskId() != null) {
-                    taskRepository.findById(request.getParentTaskId())
-                        .ifPresent(parent -> task.setParentTaskId(parent.getId()));
-                }
-                ProjectTask saved = taskRepository.save(task);
-                project.addTask(saved);
-                projectRepository.save(project);
-                return ResponseEntity.ok(mapTaskToResponse(saved));
-            })
-            .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/{projectId}/tasks")
-    public ResponseEntity<List<ProjectDTO.TaskResponse>> getTasks(@PathVariable UUID projectId) {
-        return projectRepository.findById(projectId)
-            .map(project -> ResponseEntity.ok(
-                project.getTasks().stream().map(this::mapTaskToResponse).collect(Collectors.toList())
-            ))
-            .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<ProjectDTO.TaskResponse> getTaskById(@PathVariable UUID taskId) {
-        return taskRepository.findById(taskId)
-            .map(this::mapTaskToResponse)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/tasks/{taskId}")
-    public ResponseEntity<ProjectDTO.TaskResponse> updateTask(@PathVariable UUID taskId, @RequestBody ProjectDTO.TaskRequest request) {
-        return taskRepository.findById(taskId)
-            .map(existing -> {
-                updateTaskEntity(existing, request);
-                ProjectTask saved = taskRepository.save(existing);
-                return ResponseEntity.ok(mapTaskToResponse(saved));
-            })
-            .orElse(ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/tasks/{taskId}")
-    public ResponseEntity<Void> deleteTask(@PathVariable UUID taskId) {
-        if (taskRepository.existsById(taskId)) {
-            taskRepository.deleteById(taskId);
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
-    }
-
-    private Project mapToEntity(ProjectDTO.Request request) {
-        return Project.builder()
-            .code(request.getCode())
-            .name(request.getName())
-            .description(request.getDescription())
-            .customerId(request.getCustomerId())
-            .projectManagerId(request.getProjectManagerId())
-            .status(Project.ProjectStatus.PLANNING)
-            .projectType(Project.ProjectType.valueOf(request.getProjectType()))
-            .startDate(request.getStartDate())
-            .endDate(request.getEndDate())
-            .budgetHours(request.getBudgetHours() != null ? request.getBudgetHours() : BigDecimal.ZERO)
-            .budgetCost(request.getBudgetCost() != null ? request.getBudgetCost() : BigDecimal.ZERO)
-            .currency(request.getCurrency() != null ? request.getCurrency() : "BRL")
-            .billingType(request.getBillingType())
-            .contractValue(request.getContractValue() != null ? request.getContractValue() : BigDecimal.ZERO)
-            .notes(request.getNotes())
-            .build();
-    }
-
-    private void updateEntity(Project project, ProjectDTO.Request request) {
         project.setName(request.getName());
         project.setDescription(request.getDescription());
+        project.setCustomerId(request.getCustomerId());
         project.setProjectManagerId(request.getProjectManagerId());
         project.setStartDate(request.getStartDate());
         project.setEndDate(request.getEndDate());
         project.setBudgetHours(request.getBudgetHours());
         project.setBudgetCost(request.getBudgetCost());
-        project.setBillingType(request.getBillingType());
         project.setContractValue(request.getContractValue());
         project.setNotes(request.getNotes());
+
+        projectRepository.save(project);
+        return ResponseEntity.ok(ProjectDto.ProjectResponse.fromEntity(project));
     }
 
-    private ProjectDTO.Response mapToResponse(Project project) {
-        return ProjectDTO.Response.builder()
-            .id(project.getId())
-            .code(project.getCode())
-            .name(project.getName())
-            .description(project.getDescription())
-            .customerId(project.getCustomerId())
-            .projectManagerId(project.getProjectManagerId())
-            .status(project.getStatus().name())
-            .projectType(project.getProjectType().name())
-            .startDate(project.getStartDate())
-            .endDate(project.getEndDate())
-            .actualStartDate(project.getActualStartDate())
-            .actualEndDate(project.getActualEndDate())
-            .budgetHours(project.getBudgetHours())
-            .actualHours(project.getActualHours())
-            .budgetCost(project.getBudgetCost())
-            .actualCost(project.getActualCost())
-            .currency(project.getCurrency())
-            .billingType(project.getBillingType())
-            .contractValue(project.getContractValue())
-            .invoicedAmount(project.getInvoicedAmount())
-            .notes(project.getNotes())
-            .tasks(project.getTasks().stream().map(this::mapTaskToResponse).collect(Collectors.toList()))
-            .createdAt(project.getCreatedAt())
-            .updatedAt(project.getUpdatedAt())
-            .build();
+    @PatchMapping("/{id}/activate")
+    @Operation(summary = "Activate project")
+    public ResponseEntity<ProjectDto.ProjectResponse> activateProject(@PathVariable UUID id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
+        project.setStatus(ProjectStatus.ACTIVE);
+        project.setActualStartDate(LocalDate.now());
+        projectRepository.save(project);
+        return ResponseEntity.ok(ProjectDto.ProjectResponse.fromEntity(project));
     }
 
-    private ProjectTask mapToTaskEntity(ProjectDTO.TaskRequest request) {
-        return ProjectTask.builder()
-            .code(request.getCode())
-            .name(request.getName())
-            .description(request.getDescription())
-            .status(ProjectTask.TaskStatus.NOT_STARTED)
-            .priority(ProjectTask.Priority.valueOf(request.getPriority()))
-            .assigneeId(request.getAssigneeId())
-            .startDate(request.getStartDate())
-            .endDate(request.getEndDate())
-            .estimatedHours(request.getEstimatedHours() != null ? request.getEstimatedHours() : BigDecimal.ZERO)
-            .isMilestone(request.getIsMilestone() != null ? request.getIsMilestone() : false)
-            .isBillable(request.getIsBillable() != null ? request.getIsBillable() : true)
-            .billingRate(request.getBillingRate())
-            .costRate(request.getCostRate())
-            .currency(request.getCurrency() != null ? request.getCurrency() : "BRL")
-            .notes(request.getNotes())
-            .build();
+    @PatchMapping("/{id}/complete")
+    @Operation(summary = "Complete project")
+    public ResponseEntity<ProjectDto.ProjectResponse> completeProject(@PathVariable UUID id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
+        project.setStatus(ProjectStatus.COMPLETED);
+        project.setActualEndDate(LocalDate.now());
+        projectRepository.save(project);
+        return ResponseEntity.ok(ProjectDto.ProjectResponse.fromEntity(project));
     }
 
-    private void updateTaskEntity(ProjectTask task, ProjectDTO.TaskRequest request) {
-        task.setName(request.getName());
-        task.setDescription(request.getDescription());
-        task.setPriority(ProjectTask.Priority.valueOf(request.getPriority()));
-        task.setAssigneeId(request.getAssigneeId());
-        task.setStartDate(request.getStartDate());
-        task.setEndDate(request.getEndDate());
-        task.setEstimatedHours(request.getEstimatedHours());
-        task.setIsMilestone(request.getIsMilestone());
-        task.setIsBillable(request.getIsBillable());
-        task.setBillingRate(request.getBillingRate());
-        task.setCostRate(request.getCostRate());
-        task.setNotes(request.getNotes());
+    @PatchMapping("/{id}/hold")
+    @Operation(summary = "Put project on hold")
+    public ResponseEntity<ProjectDto.ProjectResponse> holdProject(@PathVariable UUID id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
+        project.setStatus(ProjectStatus.ON_HOLD);
+        projectRepository.save(project);
+        return ResponseEntity.ok(ProjectDto.ProjectResponse.fromEntity(project));
     }
 
-    private ProjectDTO.TaskResponse mapTaskToResponse(ProjectTask task) {
-        return ProjectDTO.TaskResponse.builder()
-            .id(task.getId())
-            .projectId(task.getProject().getId())
-            .parentTaskId(task.getParentTaskId())
-            .code(task.getCode())
-            .name(task.getName())
-            .description(task.getDescription())
-            .status(task.getStatus().name())
-            .priority(task.getPriority().name())
-            .assigneeId(task.getAssigneeId())
-            .startDate(task.getStartDate())
-            .endDate(task.getEndDate())
-            .actualStartDate(task.getActualStartDate())
-            .actualEndDate(task.getActualEndDate())
-            .estimatedHours(task.getEstimatedHours())
-            .actualHours(task.getActualHours())
-            .remainingHours(task.getRemainingHours())
-            .progressPercentage(task.getProgressPercentage())
-            .isMilestone(task.getIsMilestone())
-            .isBillable(task.getIsBillable())
-            .billingRate(task.getBillingRate())
-            .costRate(task.getCostRate())
-            .currency(task.getCurrency())
-            .notes(task.getNotes())
-            .subTasks(task.getSubTasks().stream().map(this::mapTaskToResponse).collect(Collectors.toList()))
-            .createdAt(task.getCreatedAt())
-            .updatedAt(task.getUpdatedAt())
-            .build();
+    @GetMapping("/{id}/tasks")
+    @Operation(summary = "Get project tasks")
+    public ResponseEntity<List<ProjectDto.ProjectTaskDto>> getProjectTasks(@PathVariable UUID id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
+        List<ProjectTask> tasks = projectTaskRepository.findByProjectIdAndParentTaskIdIsNull(id);
+        return ResponseEntity.ok(tasks.stream().map(ProjectDto.ProjectTaskDto::fromEntity).toList());
+    }
+
+    @PostMapping("/{projectId}/tasks")
+    @Operation(summary = "Create project task")
+    public ResponseEntity<ProjectDto.ProjectTaskDto> createProjectTask(
+            @PathVariable UUID projectId,
+            @Valid @RequestBody ProjectDto.CreateProjectTaskRequest request) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+
+        ProjectTask task = ProjectTask.builder()
+                .project(project)
+                .parentTaskId(request.getParentTaskId())
+                .code(request.getCode())
+                .name(request.getName())
+                .description(request.getDescription())
+                .priority(Priority.valueOf(request.getPriority() != null ? request.getPriority() : "NORMAL"))
+                .assigneeId(request.getAssigneeId())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .estimatedHours(request.getEstimatedHours() != null ? request.getEstimatedHours() : BigDecimal.ZERO)
+                .isMilestone(request.getIsMilestone() != null ? request.getIsMilestone() : false)
+                .isBillable(request.getIsBillable() != null ? request.getIsBillable() : true)
+                .billingRate(request.getBillingRate())
+                .costRate(request.getCostRate())
+                .currency(request.getCurrency() != null ? request.getCurrency() : "BRL")
+                .notes(request.getNotes())
+                .status(TaskStatus.NOT_STARTED)
+                .build();
+
+        if (request.getParentTaskId() != null) {
+            ProjectTask parent = projectTaskRepository.findById(request.getParentTaskId()).orElseThrow();
+            parent.addSubTask(task);
+        } else {
+            project.addTask(task);
+        }
+
+        projectTaskRepository.save(task);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ProjectDto.ProjectTaskDto.fromEntity(task));
+    }
+
+    @GetMapping("/{id}/timesheets")
+    @Operation(summary = "Get project timesheets")
+    public ResponseEntity<List<ProjectDto.TimesheetDto>> getProjectTimesheets(@PathVariable UUID id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
+        List<Timesheet> timesheets = timesheetRepository.findByProjectId(id);
+        return ResponseEntity.ok(timesheets.stream().map(ProjectDto.TimesheetDto::fromEntity).toList());
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete project (only if planning)")
+    public ResponseEntity<Void> deleteProject(@PathVariable UUID id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
+        if (project.getStatus() != ProjectStatus.PLANNING) {
+            throw new IllegalStateException("Can only delete projects in planning status");
+        }
+        projectRepository.delete(project);
+        return ResponseEntity.noContent().build();
     }
 }

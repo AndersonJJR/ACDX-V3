@@ -1,0 +1,40 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:sqlite:${DEV_DB_PATH:./dev.db}
+    driver-class-name: org.sqlite.JDBC
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 5
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+        format_sql: true
+
+  flyway:
+    enabled: false
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/manufacturing_dev
+
+  cache:
+    type: simple
+
+logging:
+  level:
+    com.erp.brazil.manufacturing: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG

@@ -69,57 +69,57 @@ public class QualityInspection {
     private UUID goodsReceiptId;
 
     @Column(name = "subcontracting_receipt_id")
-    private UUID subcontractingReceiptId.
+    private UUID subcontractingReceiptId;
 
     @Column(name = "sampling_plan_id")
-    private UUID samplingPlanId.
+    private UUID samplingPlanId;
 
     @Column(name = "inspector_id", length = 100)
-    private String inspectorId.
+    private String inspectorId;
 
     @Column(name = "inspection_date", nullable = false)
-    private LocalDateTime inspectionDate.
+    private LocalDateTime inspectionDate;
 
     @Column(name = "sample_size")
-    private Integer sampleSize.
+    private Integer sampleSize;
 
     @Column(name = "accepted_quantity", precision = 19, scale = 6)
-    private BigDecimal acceptedQuantity = BigDecimal.ZERO.
+    private BigDecimal acceptedQuantity = BigDecimal.ZERO;
 
     @Column(name = "rejected_quantity", precision = 19, scale = 6)
-    private BigDecimal rejectedQuantity = BigDecimal.ZERO.
+    private BigDecimal rejectedQuantity = BigDecimal.ZERO;
 
     @Column(name = "unit_of_measure", length = 20)
-    private String unitOfMeasure.
+    private String unitOfMeasure;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "disposition", length = 30)
-    private Disposition disposition.
+    private Disposition disposition;
 
     @Column(name = "notes", length = 2000)
-    private String notes.
+    private String notes;
 
     @OneToMany(mappedBy = "qualityInspection", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    private List<QualityInspectionResult> results = new ArrayList<>()
+    private List<QualityInspectionResult> results = new ArrayList<>();
 
     @OneToMany(mappedBy = "qualityInspection", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    private List<NonConformance> nonConformances = new ArrayList<>()
+    private List<NonConformance> nonConformances = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt.
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt.
+    private LocalDateTime updatedAt;
 
     @Column(name = "created_by", length = 100)
-    private String createdBy.
+    private String createdBy;
 
     @Version
-    private Long versionLock.
+    private Long versionLock;
 
     public enum InspectionType {
         INCOMING,

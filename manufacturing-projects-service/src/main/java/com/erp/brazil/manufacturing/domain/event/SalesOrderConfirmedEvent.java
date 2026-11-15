@@ -22,18 +22,18 @@ public class SalesOrderConfirmedEvent {
     private LocalDateTime orderDate;
     private LocalDateTime requestedDeliveryDate;
     private List<SalesOrderItem> items;
-}
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-class SalesOrderItem {
-    private UUID salesOrderItemId;
-    private UUID productId;
-    private java.math.BigDecimal quantity;
-    private String unitOfMeasure;
-    private UUID warehouseId;
-    private UUID projectId;
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SalesOrderItem {
+        private UUID salesOrderItemId;
+        private UUID productId;
+        private java.math.BigDecimal quantity;
+        private String unitOfMeasure;
+        private UUID warehouseId;
+        private UUID projectId;
+    }
 }
