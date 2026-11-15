@@ -1,0 +1,6 @@
+/var/home/anderson/Projetos/ACDX_ERP/erp-brazil/api-gateway/src/main/java/com/erp/brazil/gateway/ApiGatewayApplication.java
+/var/home/anderson/Projetos/ACDX_ERP/erp-brazil/api-gateway/src/main/java/com/erp/brazil/gateway/config/GatewayConfig.java
+/var/home/anderson/Projetos/ACDX_ERP/erp-brazil/api-gateway/src/main/java/com/erp/brazil/gateway/filter/JwtAuthenticationFilter.java
+/var/home/anderson/Projetos/ACDX_ERP/erp-brazil/api-gateway/src/main/java/com/erp/brazil/gateway/filter/RateLimitingFilter.java
+/var/home/anderson/Projetos/ACDX_ERP/erp-brazil/api-gateway/src/main/java/com/erp/brazil/gateway/filter/TenantResolutionFilter.java
+/var/home/anderson/Projetos/ACDX_ERP/erp-brazil/api-gateway/src/main/java/com/erp/brazil/gateway/handler/GlobalErrorHandler.java
