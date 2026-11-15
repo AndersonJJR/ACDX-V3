@@ -9,6 +9,7 @@ import jakarta.xml.bind.ValidationEventHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 import javax.xml.XMLConstants;
 import javax.xml.transform.stream.StreamSource;

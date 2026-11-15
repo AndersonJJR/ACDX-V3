@@ -6,11 +6,11 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum IntegracaoStatus {
-    ATIVA("Ativa"),
-    INATIVA("Inativa"),
-    ERRO("Erro"),
-    MANUTENCAO("Manutenção"),
-    TESTE("Teste");
+    ACTIVE("Active"),
+    INACTIVE("Inactive"),
+    ERROR("Error"),
+    MAINTENANCE("Maintenance"),
+    TEST("Test");
 
     private final String description;
 }

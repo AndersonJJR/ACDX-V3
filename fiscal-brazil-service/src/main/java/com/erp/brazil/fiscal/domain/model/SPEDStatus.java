@@ -6,12 +6,12 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum SPEDStatus {
-    GERADO("Gerado"),
-    VALIDADO("Validado"),
-    COM_ERROS("Com Erros"),
-    TRANSMITIDO("Transmitido"),
-    AUTORIZADO("Autorizado"),
-    REJEITADO("Rejeitado");
+    GENERATED("Generated"),
+    VALIDATED("Validated"),
+    WITH_ERRORS("With Errors"),
+    TRANSMITTED("Transmitted"),
+    AUTHORIZED("Authorized"),
+    REJECTED("Rejected");
 
     private final String description;
 }

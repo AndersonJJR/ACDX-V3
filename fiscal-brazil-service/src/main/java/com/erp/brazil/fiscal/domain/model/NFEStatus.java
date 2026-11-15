@@ -6,16 +6,16 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum NFEStatus {
-    PENDENTE("Pendente"),
-    EM_PROCESSAMENTO("Em Processamento"),
-    AUTORIZADA("Autorizada"),
-    AUTORIZADA_COM_RESSALVA("Autorizada com Ressalva"),
-    REJEITADA("Rejeitada"),
-    CANCELADA("Cancelada"),
-    INUTILIZADA("Inutilizada"),
-    DENEGADA("Denegada"),
-    ERRO("Erro"),
-    CONTINGENCIA("Contingência");
+    PENDING("Pending"),
+    PROCESSING("Processing"),
+    AUTHORIZED("Authorized"),
+    AUTHORIZED_WITH_WARNING("Authorized with Warning"),
+    REJECTED("Rejected"),
+    CANCELLED("Cancelled"),
+    INUTILIZED("Inutilized"),
+    DENIED("Denied"),
+    ERROR("Error"),
+    CONTINGENCY("Contingency");
 
     private final String description;
 }

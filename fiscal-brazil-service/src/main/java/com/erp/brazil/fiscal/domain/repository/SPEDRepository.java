@@ -1,6 +1,7 @@
 package com.erp.brazil.fiscal.domain.repository;
 
 import com.erp.brazil.fiscal.domain.model.SPEDBlock;
+import com.erp.brazil.fiscal.domain.model.SPEDStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,7 +29,7 @@ public interface SPEDRepository extends JpaRepository<SPEDBlock, String> {
     );
 
     @Query("SELECT s FROM SPEDBlock s WHERE s.status = :status")
-    List<SPEDBlock> findByStatus(@Param("status") SPEDBlock.SPEDStatus status);
+    List<SPEDBlock> findByStatus(@Param("status") SPEDStatus status);
 
     @Query("SELECT s FROM SPEDBlock s WHERE s.companyId = :companyId AND s.startDate >= :start AND s.endDate <= :end")
     List<SPEDBlock> findByCompanyIdAndDateRange(
@@ -44,7 +45,7 @@ public interface SPEDRepository extends JpaRepository<SPEDBlock, String> {
     );
 
     @Query("SELECT COUNT(s) FROM SPEDBlock s WHERE s.companyId = :companyId AND s.status = 'SUBMITTED'")
-    long countSubmittedByCompanyId(@Param("companyId") String companyId);
+    long countSubmittedByCompanyId(@Param("companyCnpj") String companyId);
 
     boolean existsByCompanyIdAndPeriodAndType(String companyId, String period, String type);
 }

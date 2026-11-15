@@ -1,247 +1,394 @@
 package com.erp.brazil.fiscal.infrastructure.sped;
 
-import com.erp.brazil.fiscal.application.port.SPEDGenerationPort;
-import com.erp.brazil.fiscal.domain.model.SPEDBlock;
-import com.erp.brazil.fiscal.domain.model.SPEDType;
-import com.erp.brazil.fiscal.domain.repository.NFERepository;
-import com.erp.brazil.fiscal.domain.repository.NFSERepository;
-import com.erp.brazil.fiscal.domain.repository.CTERepository;
-import com.erp.brazil.fiscal.domain.repository.RetencaoFonteRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import com.erp.brazil.fiscal.domain.model.NFE;
+import org.springframework.stereotype.Component;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class SPEDWriter implements SPEDGenerationPort {
+/**
+ * SPED Writer for generating fixed-width/CSV files for each SPED block.
+ * Supports ECD, ECF, EFD-ICMS-IPI, EFD-Contribuições.
+ */
+@Component
+public class SPEDWriter {
 
-    private final NFERepository nfeRepository;
-    private final NFSERepository nfseRepository;
-    private final CTERepository cteRepository;
-    private final RetencaoFonteRepository retencaoRepository;
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("ddMMyyyy");
+    private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("ddMMyyyyHHmmss");
 
-    @Override
-    public List<SPEDBlock> generate(String companyCnpj, SPEDType spedType, String referenceMonth, int year) {
-        log.info("Generating SPED {} for company {} - {}/{}", spedType, companyCnpj, referenceMonth, year);
+    public String writeECD(String spedId, String companyId, List<NFE> nfes,
+                           LocalDate startDate, LocalDate endDate, String outputDir) throws IOException {
+        Path filePath = Paths.get(outputDir, "ECD_" + companyId + "_" + spedId + ".txt");
+        Files.createDirectories(filePath.getParent());
 
-        List<SPEDBlock> blocks = new ArrayList<>();
+        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.ISO_8859_1)) {
+            // Registro 0000 - Abertura do Arquivo Digital
+            writer.write("|0000|0|" + DATE_FMT.format(startDate) + "|" + DATE_FMT.format(endDate) + "|"
+                    + companyId + "|" + getCompanyName(companyId) + "|||0|0|0|0|0|0|0|0|0|0|0|0|\n");
 
-        switch (spedType) {
-            case EFD_ICMS_IPI -> blocks.addAll(generateEFDICMSIPI(companyCnpj, referenceMonth, year));
-            case EFD_CONTRIBUICOES -> blocks.addAll(generateEFDContribuicoes(companyCnpj, referenceMonth, year));
-            case ECD -> blocks.addAll(generateECD(companyCnpj, referenceMonth, year));
-            case ECF -> blocks.addAll(generateECF(companyCnpj, referenceMonth, year));
+            // Registro 0001 - Abertura do Bloco 0
+            writer.write("|0001|0|\n");
+
+            // Registro 0150 - Tabela de Cadastro do Participante
+            writeParticipantes(writer, nfes);
+
+            // Registro 0190 - Unidades de Medida
+            writer.write("|0190|UN|UNIDADE|\n");
+            writer.write("|0190|KG|QUILOGRAMA|\n");
+            writer.write("|0190|L|LITRO|\n");
+            writer.write("|0190|M|METRO|\n");
+
+            // Registro 0200 - Identificação dos Itens (Produtos e Serviços)
+            writeItens(writer, nfes);
+
+            // Registro 0990 - Encerramento do Bloco 0
+            writer.write("|0990|\n");
+
+            // Bloco C - Documentos Fiscais I - Mercadorias (ICMS/IPI)
+            writeBlocoC(writer, nfes);
+
+            // Bloco E - Apuração do ICMS e do IPI
+            writeBlocoE(writer, nfes);
+
+            // Bloco H - Inventário Físico
+            writeBlocoH(writer, nfes);
+
+            // Bloco 1 - Documentos Fiscais II - Serviços (ISS)
+            writeBloco1(writer, nfes);
+
+            // Registro 9999 - Encerramento do Arquivo Digital
+            writer.write("|9999|\n");
         }
 
-        return blocks;
+        return filePath.toString();
     }
 
-    private List<SPEDBlock> generateEFDICMSIPI(String companyCnpj, String referenceMonth, int year) {
-        List<SPEDBlock> blocks = new ArrayList<>();
+    public String writeECF(String spedId, String companyId, List<NFE> nfes,
+                           LocalDate startDate, LocalDate endDate, String outputDir) throws IOException {
+        Path filePath = Paths.get(outputDir, "ECF_" + companyId + "_" + spedId + ".txt");
+        Files.createDirectories(filePath.getParent());
 
-        // Block 0 - Opening
-        blocks.add(createBlock("0", "0000", createReg0000(companyCnpj, referenceMonth)));
+        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.ISO_8859_1)) {
+            // Registro 0000 - Abertura
+            writer.write("|0000|0|" + DATE_FMT.format(startDate) + "|" + DATE_FMT.format(endDate) + "|"
+                    + companyId + "|" + getCompanyName(companyId) + "|||0|0|0|0|0|0|0|0|0|0|0|0|\n");
 
-        // Block C - NF-e (Entradas/Saídas)
-        List<com.erp.brazil.fiscal.domain.model.NFE> nfes = nfeRepository.findByEmitenteCnpjAndDataEmissaoBetween(
-                companyCnpj,
-                parseMonthStart(referenceMonth),
-                parseMonthEnd(referenceMonth)
-        );
+            // Registro 0001 - Abertura do Bloco 0
+            writer.write("|0001|0|\n");
 
-        for (com.erp.brazil.fiscal.domain.model.NFE nfe : nfes) {
-            blocks.add(createBlock("C", "C100", createRegC100(nfe)));
-            blocks.add(createBlock("C", "C170", createRegC170(nfe)));
+            // Registro 0150 - Participantes
+            writeParticipantes(writer, nfes);
+
+            // Registro 0200 - Itens
+            writeItens(writer, nfes);
+
+            // Registro 0990 - Encerramento Bloco 0
+            writer.write("|0990|\n");
+
+            // Bloco J - Escrituração do Lucro Real
+            writeBlocoJ(writer, nfes);
+
+            // Bloco L - Lucro Presumido/Arbitrado
+            writeBlocoL(writer, nfes);
+
+            // Bloco M - Resultados e Apurações
+            writeBlocoM(writer, nfes);
+
+            // Registro 9999 - Encerramento
+            writer.write("|9999|\n");
         }
 
-        // Block E - Apuração ICMS/IPI
-        blocks.add(createBlock("E", "E100", createRegE100(companyCnpj, referenceMonth)));
-        blocks.add(createBlock("E", "E200", createRegE200(companyCnpj, referenceMonth)));
-
-        // Block H - Inventário
-        blocks.add(createBlock("H", "H005", createRegH005(companyCnpj, referenceMonth)));
-
-        // Block 9 - Closing
-        blocks.add(createBlock("9", "9900", createReg9900(blocks.size() + 1)));
-
-        return blocks;
+        return filePath.toString();
     }
 
-    private List<SPEDBlock> generateEFDContribuicoes(String companyCnpj, String referenceMonth, int year) {
-        List<SPEDBlock> blocks = new ArrayList<>();
+    public String writeEFD_ICMS_IPI(String spedId, String companyId, List<NFE> nfes,
+                                     LocalDate startDate, LocalDate endDate, String outputDir) throws IOException {
+        Path filePath = Paths.get(outputDir, "EFD_ICMS_IPI_" + companyId + "_" + spedId + ".txt");
+        Files.createDirectories(filePath.getParent());
 
-        // Block 0 - Opening
-        blocks.add(createBlock("0", "0000", createReg0000(companyCnpj, referenceMonth)));
+        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.ISO_8859_1)) {
+            // Registro 0000 - Abertura
+            writer.write("|0000|0|" + DATE_FMT.format(startDate) + "|" + DATE_FMT.format(endDate) + "|"
+                    + companyId + "|" + getCompanyName(companyId) + "|||0|0|0|0|0|0|0|0|0|0|0|0|\n");
 
-        // Block M - PIS/COFINS
-        List<com.erp.brazil.fiscal.domain.model.NFE> nfes = nfeRepository.findByEmitenteCnpjAndDataEmissaoBetween(
-                companyCnpj,
-                parseMonthStart(referenceMonth),
-                parseMonthEnd(referenceMonth)
-        );
+            // Registro 0001 - Abertura do Bloco 0
+            writer.write("|0001|0|\n");
 
-        for (com.erp.brazil.fiscal.domain.model.NFE nfe : nfes) {
-            blocks.add(createBlock("M", "M100", createRegM100(nfe)));
+            // Registro 0150 - Tabela de Cadastro do Participante
+            writeParticipantes(writer, nfes);
+
+            // Registro 0190 - Unidades de Medida
+            writer.write("|0190|UN|UNIDADE|\n");
+            writer.write("|0190|KG|QUILOGRAMA|\n");
+            writer.write("|0190|L|LITRO|\n");
+            writer.write("|0190|M|METRO|\n");
+            writer.write("|0190|CX|CAIXA|\n");
+
+            // Registro 0200 - Identificação dos Itens
+            writeItens(writer, nfes);
+
+            // Registro 0990 - Encerramento do Bloco 0
+            writer.write("|0990|\n");
+
+            // Bloco C - Documentos Fiscais I - Mercadorias (ICMS/IPI)
+            writeBlocoC(writer, nfes);
+
+            // Bloco D - Documentos Fiscais II - Serviços (ISS)
+            writeBlocoD(writer, nfes);
+
+            // Bloco E - Apuração do ICMS e do IPI
+            writeBlocoE(writer, nfes);
+
+            // Bloco G - Controle de Crédito de ICMS do Ativo Permanente - CIAP
+            writeBlocoG(writer, nfes);
+
+            // Bloco H - Inventário Físico
+            writeBlocoH(writer, nfes);
+
+            // Bloco 1 - Documentos Fiscais III - Serviços de Transporte (ICMS)
+            writeBloco1(writer, nfes);
+
+            // Registro 9999 - Encerramento do Arquivo Digital
+            writer.write("|9999|\n");
         }
 
-        // Block 9 - Closing
-        blocks.add(createBlock("9", "9900", createReg9900(blocks.size() + 1)));
-
-        return blocks;
+        return filePath.toString();
     }
 
-    private List<SPEDBlock> generateECD(String companyCnpj, String referenceMonth, int year) {
-        List<SPEDBlock> blocks = new ArrayList<>();
+    public String writeEFD_Contribuicoes(String spedId, String companyId, List<NFE> nfes,
+                                          LocalDate startDate, LocalDate endDate, String outputDir) throws IOException {
+        Path filePath = Paths.get(outputDir, "EFD_Contribuicoes_" + companyId + "_" + spedId + ".txt");
+        Files.createDirectories(filePath.getParent());
 
-        // Block 0 - Opening
-        blocks.add(createBlock("0", "0000", createReg0000(companyCnpj, referenceMonth)));
+        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.ISO_8859_1)) {
+            // Registro 0000 - Abertura
+            writer.write("|0000|0|" + DATE_FMT.format(startDate) + "|" + DATE_FMT.format(endDate) + "|"
+                    + companyId + "|" + getCompanyName(companyId) + "|||0|0|0|0|0|0|0|0|0|0|0|0|\n");
 
-        // Block I - Livro Diário
-        blocks.add(createBlock("I", "I010", createRegI010(companyCnpj, referenceMonth)));
-        blocks.add(createBlock("I", "I050", createRegI050(companyCnpj, referenceMonth)));
-        blocks.add(createBlock("I", "I051", createRegI051(companyCnpj, referenceMonth)));
+            // Registro 0001 - Abertura do Bloco 0
+            writer.write("|0001|0|\n");
 
-        // Block J - Livro Diário (Partidas)
-        blocks.add(createBlock("J", "J100", createRegJ100(companyCnpj, referenceMonth)));
-        blocks.add(createBlock("J", "J150", createRegJ150(companyCnpj, referenceMonth)));
+            // Registro 0150 - Tabela de Cadastro do Participante
+            writeParticipantes(writer, nfes);
 
-        // Block 9 - Closing
-        blocks.add(createBlock("9", "9900", createReg9900(blocks.size() + 1)));
+            // Registro 0190 - Unidades de Medida
+            writer.write("|0190|UN|UNIDADE|\n");
+            writer.write("|0190|KG|QUILOGRAMA|\n");
+            writer.write("|0190|L|LITRO|\n");
 
-        return blocks;
+            // Registro 0200 - Identificação dos Itens
+            writeItens(writer, nfes);
+
+            // Registro 0990 - Encerramento do Bloco 0
+            writer.write("|0990|\n");
+
+            // Bloco P - Apuração da Contribuição para o PIS/PASEP e da COFINS
+            writeBlocoP(writer, nfes);
+
+            // Bloco M - Informações Complementares
+            writeBlocoM(writer, nfes);
+
+            // Bloco 1 - Documentos Fiscais - Serviços (ISS)
+            writeBloco1(writer, nfes);
+
+            // Registro 9999 - Encerramento do Arquivo Digital
+            writer.write("|9999|\n");
+        }
+
+        return filePath.toString();
     }
 
-    private List<SPEDBlock> generateECF(String companyCnpj, String referenceMonth, int year) {
-        List<SPEDBlock> blocks = new ArrayList<>();
+    private void writeParticipantes(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Collect unique participants (emitters and recipients)
+        var participants = new java.util.LinkedHashMap<String, NFE.Emitter>();
+        for (NFE nfe : nfes) {
+            participants.put(nfe.emitter().cnpj(), nfe.emitter());
+            participants.put(nfe.recipient().cnpjCpf(), nfe.recipient());
+        }
 
-        // Block 0 - Opening
-        blocks.add(createBlock("0", "0000", createReg0000(companyCnpj, referenceMonth)));
-
-        // Block L - Apuração Lucro Real
-        blocks.add(createBlock("L", "L100", createRegL100(companyCnpj, referenceMonth)));
-        blocks.add(createBlock("L", "L200", createRegL200(companyCnpj, referenceMonth)));
-        blocks.add(createBlock("L", "L300", createRegL300(companyCnpj, referenceMonth)));
-
-        // Block M - PIS/COFINS
-        blocks.add(createBlock("M", "M100", createRegM100Ecf(companyCnpj, referenceMonth)));
-
-        // Block 9 - Closing
-        blocks.add(createBlock("9", "9900", createReg9900(blocks.size() + 1)));
-
-        return blocks;
+        int index = 1;
+        for (var entry : participants.entrySet()) {
+            var emitter = entry.getValue();
+            writer.write("|0150|" + index + "|" + entry.getKey() + "|"
+                    + (emitter.ie() != null ? emitter.ie() : "") + "|"
+                    + (emitter.companyName() != null ? emitter.companyName() : "") + "|"
+                    + (emitter.address() != null ? emitter.address().street() : "") + "|"
+                    + (emitter.address() != null ? emitter.address().number() : "") + "|"
+                    + (emitter.address() != null ? emitter.address().complement() : "") + "|"
+                    + (emitter.address() != null ? emitter.address().neighborhood() : "") + "|"
+                    + (emitter.address() != null ? emitter.address().cityCode() : "") + "|"
+                    + (emitter.address() != null ? emitter.address().uf() : "") + "|"
+                    + (emitter.address() != null ? emitter.address().cep() : "") + "|"
+                    + (emitter.cnae() != null ? emitter.cnae() : "") + "|\n");
+            index++;
+        }
     }
 
-    // Helper methods for creating register data (simplified)
-    private String createReg0000(String cnpj, String referenceMonth) {
-        return String.format("0000|%s|%s|%s|%s|%s|||", cnpj, "1", "0", "0", referenceMonth);
+    private void writeItens(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        var items = new java.util.LinkedHashMap<String, NFE.Item>();
+        for (NFE nfe : nfes) {
+            for (NFE.Item item : nfe.items()) {
+                String key = item.ncm() + "|" + item.cfop() + "|" + item.ucom();
+                if (!items.containsKey(key)) {
+                    items.put(key, item);
+                }
+            }
+        }
+
+        int index = 1;
+        for (var item : items.values()) {
+            writer.write("|0200|" + index + "|" + (item.ncm() != null ? item.ncm() : "") + "|"
+                    + (item.cest() != null ? item.cest() : "") + "|"
+                    + (item.description() != null ? item.description() : "ITEM") + "|"
+                    + (item.ucom() != null ? item.ucom() : "UN") + "|"
+                    + (item.uTrib() != null ? item.uTrib() : item.ucom()) + "|"
+                    + (item.cfop() != null ? item.cfop() : "") + "|\n");
+            index++;
+        }
     }
 
-    private String createRegC100(com.erp.brazil.fiscal.domain.model.NFE nfe) {
-        return String.format("C100|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s||",
-                nfe.getId(), "0", nfe.getSerie(), nfe.getNumero(),
-                nfe.getDataEmissao().format(DateTimeFormatter.ofPattern("ddMMyyyy")),
-                nfe.getValorTotal(), nfe.getValorIcms(), nfe.getValorIpi(),
-                nfe.getChaveAcesso(), "1");
+    private void writeBlocoC(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Registro C100 - Notas Fiscais (modelo 55)
+        for (NFE nfe : nfes) {
+            writer.write("|C100|" + (nfe.type() == NFE.NFEType.ENTRADA ? "0" : "1") + "|"
+                    + nfe.series() + "|" + nfe.number() + "|"
+                    + DATE_FMT.format(nfe.emissionDate().toLocalDate()) + "|"
+                    + (nfe.emissionDate().format(DATETIME_FMT)) + "|"
+                    + nfe.emitter().cnpj() + "|"
+                    + nfe.recipient().cnpjCpf() + "|"
+                    + formatValue(nfe.totals().vNF()) + "|"
+                    + formatValue(nfe.totals().vBC()) + "|"
+                    + formatValue(nfe.totals().vICMS()) + "|"
+                    + formatValue(nfe.totals().vBCST()) + "|"
+                    + formatValue(nfe.totals().vST()) + "|"
+                    + formatValue(nfe.totals().vIPI()) + "|"
+                    + formatValue(nfe.totals().vPIS()) + "|"
+                    + formatValue(nfe.totals().vCOFINS()) + "|\n");
+
+            // Registro C170 - Itens da NF-e
+            for (int i = 0; i < nfe.items().size(); i++) {
+                NFE.Item item = nfe.items().get(i);
+                writer.write("|C170|" + (i + 1) + "|"
+                        + item.ncm() + "|"
+                        + item.cfop() + "|"
+                        + item.ucom() + "|"
+                        + formatValue(item.qCom()) + "|"
+                        + formatValue(item.vUnCom()) + "|"
+                        + formatValue(item.vProd()) + "|"
+                        + formatValue(item.vDesc()) + "|"
+                        + (item.icms() != null ? item.icms().cst() : "") + "|"
+                        + formatValue(item.icms() != null ? item.icms().vBC() : BigDecimal.ZERO) + "|"
+                        + formatValue(item.icms() != null ? item.icms().pICMS() : BigDecimal.ZERO) + "|"
+                        + formatValue(item.icms() != null ? item.icms().vICMS() : BigDecimal.ZERO) + "|"
+                        + (item.ipi() != null ? item.ipi().cst() : "") + "|"
+                        + formatValue(item.ipi() != null ? item.ipi().vBC() : BigDecimal.ZERO) + "|"
+                        + formatValue(item.ipi() != null ? item.ipi().pIPI() : BigDecimal.ZERO) + "|"
+                        + formatValue(item.ipi() != null ? item.ipi().vIPI() : BigDecimal.ZERO) + "|\n");
+            }
+        }
     }
 
-    private String createRegC170(com.erp.brazil.fiscal.domain.model.NFE nfe) {
-        return String.format("C170|%s|%s|%s|||||||", nfe.getId(), "001", "1");
+    private void writeBlocoD(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Registro D100 - Notas Fiscais de Serviços
+        for (NFE nfe : nfes) {
+            if (nfe.totals().vServ() != null && nfe.totals().vServ().compareTo(BigDecimal.ZERO) > 0) {
+                writer.write("|D100|" + (nfe.type() == NFE.NFEType.ENTRADA ? "0" : "1") + "|"
+                        + nfe.series() + "|" + nfe.number() + "|"
+                        + DATE_FMT.format(nfe.emissionDate().toLocalDate()) + "|"
+                        + nfe.emitter().cnpj() + "|"
+                        + nfe.recipient().cnpjCpf() + "|"
+                        + formatValue(nfe.totals().vServ()) + "|"
+                        + formatValue(nfe.totals().vBCServ()) + "|"
+                        + formatValue(nfe.totals().vISS()) + "|\n");
+            }
+        }
     }
 
-    private String createRegE100(String cnpj, String referenceMonth) {
-        return String.format("E100|%s|%s|%s|%s||", cnpj, referenceMonth, "0", "0");
+    private void writeBlocoE(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Registro E100 - Apuração do ICMS
+        writer.write("|E100|" + DATE_FMT.format(nfes.get(0).emissionDate().toLocalDate()) + "|"
+                + "0|" + formatValue(BigDecimal.ZERO) + "|"
+                + formatValue(BigDecimal.ZERO) + "|"
+                + formatValue(BigDecimal.ZERO) + "|\n");
     }
 
-    private String createRegE200(String cnpj, String referenceMonth) {
-        return String.format("E200|%s|%s|%s|%s||", cnpj, referenceMonth, "0", "0");
+    private void writeBlocoG(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Registro G100 - CIAP
+        writer.write("|G100|\n");
     }
 
-    private String createRegH005(String cnpj, String referenceMonth) {
-        return String.format("H005|%s|%s||", cnpj, referenceMonth);
+    private void writeBlocoH(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Registro H001 - Abertura do Bloco H
+        writer.write("|H001|0|\n");
+
+        // Registro H010 - Inventário
+        writer.write("|H010|1|" + DATE_FMT.format(LocalDate.now()) + "|01||\n");
+
+        // Registro H990 - Encerramento do Bloco H
+        writer.write("|H990|\n");
     }
 
-    private String createReg9900(int totalLines) {
-        return String.format("9900|%d", totalLines);
+    private void writeBloco1(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Registro 1001 - Abertura do Bloco 1
+        writer.write("|1001|0|\n");
+
+        // Registro 1400 - Documentos Fiscais - Serviços
+        for (NFE nfe : nfes) {
+            if (nfe.totals().vServ() != null && nfe.totals().vServ().compareTo(BigDecimal.ZERO) > 0) {
+                writer.write("|1400|" + nfe.series() + "|" + nfe.number() + "|"
+                        + DATE_FMT.format(nfe.emissionDate().toLocalDate()) + "|"
+                        + nfe.emitter().cnpj() + "|"
+                        + nfe.recipient().cnpjCpf() + "|"
+                        + formatValue(nfe.totals().vServ()) + "|"
+                        + formatValue(nfe.totals().vBCServ()) + "|"
+                        + formatValue(nfe.totals().vISS()) + "|\n");
+            }
+        }
+
+        // Registro 1990 - Encerramento do Bloco 1
+        writer.write("|1990|\n");
     }
 
-    private String createRegM100(com.erp.brazil.fiscal.domain.model.NFE nfe) {
-        return String.format("M100|%s|%s|%s|%s|%s|%s||",
-                nfe.getId(), "0", nfe.getSerie(), nfe.getNumero(),
-                nfe.getValorTotal(), nfe.getDataEmissao().format(DateTimeFormatter.ofPattern("ddMMyyyy")));
+    private void writeBlocoJ(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Bloco J - Escrituração do Lucro Real
+        writer.write("|J001|0|\n");
+        writer.write("|J990|\n");
     }
 
-    private String createRegI010(String cnpj, String referenceMonth) {
-        return String.format("I010|%s|%s||", cnpj, referenceMonth);
+    private void writeBlocoL(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Bloco L - Lucro Presumido/Arbitrado
+        writer.write("|L001|0|\n");
+        writer.write("|L990|\n");
     }
 
-    private String createRegI050(String cnpj, String referenceMonth) {
-        return String.format("I050|%s|%s||", cnpj, referenceMonth);
+    private void writeBlocoM(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Bloco M - Informações Complementares
+        writer.write("|M001|0|\n");
+        writer.write("|M990|\n");
     }
 
-    private String createRegI051(String cnpj, String referenceMonth) {
-        return String.format("I051|%s|%s||", cnpj, referenceMonth);
+    private void writeBlocoP(BufferedWriter writer, List<NFE> nfes) throws IOException {
+        // Bloco P - Apuração da Contribuição para o PIS/PASEP e da COFINS
+        writer.write("|P001|0|\n");
+        writer.write("|P990|\n");
     }
 
-    private String createRegJ100(String cnpj, String referenceMonth) {
-        return String.format("J100|%s|%s||", cnpj, referenceMonth);
+    private String formatValue(BigDecimal value) {
+        if (value == null) return "";
+        return value.setScale(2, java.math.RoundingMode.HALF_UP).toString().replace(".", ",");
     }
 
-    private String createRegJ150(String cnpj, String referenceMonth) {
-        return String.format("J150|%s|%s||", cnpj, referenceMonth);
-    }
-
-    private String createRegL100(String cnpj, String referenceMonth) {
-        return String.format("L100|%s|%s||", cnpj, referenceMonth);
-    }
-
-    private String createRegL200(String cnpj, String referenceMonth) {
-        return String.format("L200|%s|%s||", cnpj, referenceMonth);
-    }
-
-    private String createRegL300(String cnpj, String referenceMonth) {
-        return String.format("L300|%s|%s||", cnpj, referenceMonth);
-    }
-
-    private String createRegM100Ecf(String cnpj, String referenceMonth) {
-        return String.format("M100|%s|%s||", cnpj, referenceMonth);
-    }
-
-    private LocalDateTime parseMonthStart(String referenceMonth) {
-        return LocalDate.parse(referenceMonth + "-01", DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay();
-    }
-
-    private LocalDateTime parseMonthEnd(String referenceMonth) {
-        return parseMonthStart(referenceMonth).plusMonths(1).minusDays(1).atTime(23, 59, 59);
-    }
-
-    private SPEDBlock createBlock(String block, String register, String data) {
-        SPEDBlock spedBlock = SPEDBlock.builder()
-                .id(UUID.randomUUID().toString())
-                .block(block)
-                .register(register)
-                .data(data)
-                .build();
-        return spedBlock;
-    }
-
-    @Override
-    public ValidationResult validate(SPEDBlock block) {
-        // Simplified validation
-        return ValidationResult.valid();
-    }
-
-    @Override
-    public void transmit(SPEDBlock block) {
-        log.info("Transmitting SPED block: {}-{}", block.getBlock(), block.getRegister());
-        // Implementation would send to SPED system (Receita Federal)
+    private String getCompanyName(String companyId) {
+        // In production, fetch from company service
+        return "EMPRESA " + companyId;
     }
 }

@@ -6,11 +6,11 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum NFEEventStatus {
-    PENDENTE("Pendente"),
-    EM_PROCESSAMENTO("Em Processamento"),
-    AUTORIZADO("Autorizado"),
-    REJEITADO("Rejeitado"),
-    ERRO("Erro");
+    PENDING("Pending"),
+    PROCESSING("Processing"),
+    AUTHORIZED("Authorized"),
+    REJECTED("Rejected"),
+    ERROR("Error");
 
     private final String description;
 }

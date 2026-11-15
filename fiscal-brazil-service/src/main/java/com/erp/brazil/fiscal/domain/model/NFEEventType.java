@@ -6,11 +6,11 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum NFEEventType {
-    CANCELAMENTO("110111", "Cancelamento"),
-    CARTA_CORRECAO("110110", "Carta de Correção"),
-    MANIFESTACAO_DESTINATARIO("210200", "Manifestação do Destinatário"),
-    EPEC("110140", "EPEC - Evento Prévio da Emissão em Contingência"),
-    CCE("110110", "Carta de Correção Eletrônica");
+    CANCELLATION("110111", "Cancellation"),
+    CORRECTION_LETTER("110110", "Correction Letter"),
+    RECIPIENT_MANIFESTATION("210200", "Recipient Manifestation"),
+    EPEC("110140", "EPEC - Pre-Emission Event in Contingency"),
+    ECC("110110", "Electronic Correction Letter");
 
     private final String code;
     private final String description;

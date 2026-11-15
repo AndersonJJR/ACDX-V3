@@ -1,6 +1,7 @@
 package com.erp.brazil.fiscal.infrastructure.sefaz;
 
 import com.erp.brazil.fiscal.domain.model.CertificadoDigitalA1;
+import com.erp.brazil.fiscal.infrastructure.certificado.CertificadoSSLService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.beans.factory.annotation.Value;
@@ -518,7 +519,7 @@ public class SEFAZClient {
         return xml.replace("&", "&")
                 .replace("<", "<")
                 .replace(">", ">")
-                .replace("\"", """)
+                .replace("\"", "\"")
                 .replace("'", "&apos;");
     }
 

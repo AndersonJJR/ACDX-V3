@@ -1,6 +1,7 @@
 package com.erp.brazil.fiscal.domain.repository;
 
 import com.erp.brazil.fiscal.domain.model.CertificadoDigitalA1;
+import com.erp.brazil.fiscal.domain.model.CertificateStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,7 +24,7 @@ public interface CertificadoDigitalRepository extends JpaRepository<CertificadoD
     List<CertificadoDigitalA1> findByCompanyId(String companyId);
 
     @Query("SELECT c FROM CertificadoDigitalA1 c WHERE c.status = :status")
-    List<CertificadoDigitalA1> findByStatus(@Param("status") CertificadoDigitalA1.CertificateStatus status);
+    List<CertificadoDigitalA1> findByStatus(@Param("status") CertificateStatus status);
 
     @Query("SELECT c FROM CertificadoDigitalA1 c WHERE c.expiryDate <= :date AND c.status = 'ACTIVE'")
     List<CertificadoDigitalA1> findExpiringBefore(@Param("date") LocalDate date);
@@ -37,7 +38,7 @@ public interface CertificadoDigitalRepository extends JpaRepository<CertificadoD
             @Param("end") LocalDate end
     );
 
-    List<CertificadoDigitalA1> findByCompanyIdAndStatus(String companyId, CertificadoDigitalA1.CertificateStatus status);
+    List<CertificadoDigitalA1> findByCompanyIdAndStatus(String companyId, CertificateStatus status);
 
     @Query("SELECT c FROM CertificadoDigitalA1 c WHERE c.thumbprint = :thumbprint")
     Optional<CertificadoDigitalA1> findByThumbprint(@Param("thumbprint") String thumbprint);

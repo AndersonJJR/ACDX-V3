@@ -1,6 +1,8 @@
 package com.erp.brazil.fiscal.application.dto;
 
 import com.erp.brazil.fiscal.domain.model.SPEDBlock;
+import com.erp.brazil.fiscal.domain.model.SPEDStatus;
+import com.erp.brazil.fiscal.domain.model.SPEDType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,23 +17,19 @@ public class SPEDDTO {
     @Schema(description = "SPED generation request")
     public record GenerateRequest(
             @NotBlank String companyId,
-            @NotNull SPEDBlock.SPEDType type,
+            @NotNull SPEDType type,
             @NotNull LocalDate startDate,
             @NotNull LocalDate endDate,
             String profile,
             String layout,
             boolean async,
             String callbackUrl
-    ) {
-        public enum SPEDType {
-            ECD, ECF, EFD_ICMS_IPI, EFD_CONTRIBUICOES
-        }
-    }
+    ) {}
 
     @Schema(description = "SPED generation response")
     public record GenerateResponse(
             String spedId,
-            SPEDBlock.SPEDStatus status,
+            SPEDStatus status,
             String message,
             java.time.LocalDateTime generatedAt,
             String filePath,
@@ -41,7 +39,7 @@ public class SPEDDTO {
     @Schema(description = "SPED query response")
     public record QueryResponse(
             SPEDBlock sped,
-            SPEDBlock.SPEDStatus status,
+            SPEDStatus status,
             String validationResult,
             java.time.LocalDateTime lastValidation
     ) {}

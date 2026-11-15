@@ -6,13 +6,13 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum NFSEStatus {
-    PENDENTE("Pendente"),
-    EM_PROCESSAMENTO("Em Processamento"),
-    AUTORIZADA("Autorizada"),
-    REJEITADA("Rejeitada"),
-    CANCELADA("Cancelada"),
-    SUBSTITUIDA("Substituída"),
-    ERRO("Erro");
+    PENDING("Pending"),
+    PROCESSING("Processing"),
+    AUTHORIZED("Authorized"),
+    REJECTED("Rejected"),
+    CANCELLED("Cancelled"),
+    REPLACED("Replaced"),
+    ERROR("Error");
 
     private final String description;
 }

@@ -1,7 +1,12 @@
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
+*.class
+*.log
+*.jar
+*.war
+*.ear
+!.mvn/wrapper/maven-wrapper.jar**/src/main/**/target/
 !**/src/test/**/target/
 
 ### STS ###

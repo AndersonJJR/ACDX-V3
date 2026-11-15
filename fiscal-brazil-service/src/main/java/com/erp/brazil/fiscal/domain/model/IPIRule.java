@@ -1,35 +1,34 @@
 package com.erp.brazil.fiscal.domain.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.PrimaryKeyJoinColumn;
-import jakarta.persistence.Table;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-@Entity
-@Table(name = "fiscal_ipi_rule")
-@PrimaryKeyJoinColumn(name = "id")
-@Getter
-@Setter
-public class IPIRule extends TaxRule {
-    @Column(name = "cst", length = 2)
-    private String cst; // 00, 01, 02, 03, 04, 05, 49, 50, 51, 52, 53, 54, 55, 99
-
-    @Column(name = "aliquota", precision = 5, scale = 2)
-    private BigDecimal aliquota;
-
-    @Column(name = "valor_fixo", precision = 15, scale = 4)
-    private BigDecimal valorFixo;
-
-    @Column(name = "unidade", length = 10)
-    private String unidade;
-
-    @Column(name = "calculation_type", length = 20)
-    private String calculationType; // PERCENTUAL, VALOR_FIXO
+/**
+ * IPI (Imposto sobre Produtos Industrializados) calculation rule.
+ */
+public record IPIRule(
+        String id,
+        String taxType,
+        String name,
+        String description,
+        String ufOrigin,
+        String ufDestination,
+        String ncmCode,
+        String cestCode,
+        String cfopCode,
+        String taxRegime,
+        java.time.LocalDate effectiveFrom,
+        java.time.LocalDate effectiveTo,
+        int priority,
+        boolean active,
+        String version,
+        java.time.LocalDateTime lastSync,
+        String cst,
+        BigDecimal aliquota,
+        BigDecimal valorFixo,
+        String unidade,
+        String calculationType
+) implements TaxRule {
 
     @Override
     public BigDecimal calculate(BigDecimal baseValue, TaxCalculationContext context) {
@@ -45,5 +44,19 @@ public class IPIRule extends TaxRule {
         return baseValue.multiply(aliquota != null ? aliquota : BigDecimal.ZERO)
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
                 .max(BigDecimal.ZERO);
+    }
+
+    public static IPIRule of(String cst, BigDecimal aliquota, BigDecimal valorFixo,
+                              String unidade, String calculationType) {
+        return new IPIRule(
+                java.util.UUID.randomUUID().toString(),
+                "IPI",
+                "IPI - CST " + cst,
+                "IPI rule for CST " + cst,
+                null, null, null, null, null, null,
+                java.time.LocalDate.now(), null, 0, true, "1.0",
+                java.time.LocalDateTime.now(),
+                cst, aliquota, valorFixo, unidade, calculationType
+        );
     }
 }

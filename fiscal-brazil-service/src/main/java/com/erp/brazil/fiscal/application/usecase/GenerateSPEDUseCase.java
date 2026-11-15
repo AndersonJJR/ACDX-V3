@@ -3,6 +3,7 @@ package com.erp.brazil.fiscal.application.usecase;
 import com.erp.brazil.fiscal.application.dto.EventDTO;
 import com.erp.brazil.fiscal.application.dto.SPEDDTO;
 import com.erp.brazil.fiscal.domain.model.SPEDBlock;
+import com.erp.brazil.fiscal.domain.model.SPEDStatus;
 import com.erp.brazil.fiscal.domain.repository.NFERepository;
 import com.erp.brazil.fiscal.domain.repository.SPEDRepository;
 import com.erp.brazil.fiscal.infrastructure.messaging.EventPublisher;
@@ -128,13 +129,13 @@ public class GenerateSPEDUseCase {
             spedRepository.save(failed);
 
             return new SPEDDTO.GenerateResponse(
-                    spedId, SPEDBlock.SPEDStatus.ERROR, "Generation failed: " + e.getMessage(),
+                    spedId, SPEDStatus.ERROR, "Generation failed: " + e.getMessage(),
                     LocalDateTime.now(), null, null
             );
         }
     }
 
-    private SPEDBlock createSpedRecord(String id, SPEDDTO.GenerateRequest request, String period, SPEDBlock.SPEDStatus status) {
+    private SPEDBlock createSpedRecord(String id, SPEDDTO.GenerateRequest request, String period, SPEDStatus status) {
         return switch (request.type()) {
             case ECD -> new SPEDBlock.ECD(id, request.companyId(), period, request.startDate(), request.endDate(),
                     status, LocalDateTime.now(), null, null, "1.0", SPEDBlock.ECD.Layout.LAYOUT_1, List.of());

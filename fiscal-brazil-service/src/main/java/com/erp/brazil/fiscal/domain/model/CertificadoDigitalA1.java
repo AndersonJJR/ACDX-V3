@@ -62,10 +62,10 @@ public class CertificadoDigitalA1 {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private CertificadoStatus status = CertificadoStatus.ATIVO;
+    private CertificateStatus status = CertificateStatus.ACTIVE;
 
     @Column(name = "environment", length = 1)
-    private String environment = "1"; // 1=Produção, 2=Homologação
+    private String environment = "1"; // 1=Production, 2=Homologation
 
     @Column(name = "last_renewal_alert_sent")
     private LocalDateTime lastRenewalAlertSent;

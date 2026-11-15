@@ -6,15 +6,15 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum CTEStatus {
-    PENDENTE("Pendente"),
-    EM_PROCESSAMENTO("Em Processamento"),
-    AUTORIZADA("Autorizada"),
-    AUTORIZADA_COM_RESSALVA("Autorizada com Ressalva"),
-    REJEITADA("Rejeitada"),
-    CANCELADA("Cancelada"),
-    INUTILIZADA("Inutilizada"),
-    ERRO("Erro"),
-    CONTINGENCIA("Contingência");
+    PENDING("Pending"),
+    PROCESSING("Processing"),
+    AUTHORIZED("Authorized"),
+    AUTHORIZED_WITH_WARNING("Authorized with Warning"),
+    REJECTED("Rejected"),
+    CANCELLED("Cancelled"),
+    INUTILIZED("Inutilized"),
+    ERROR("Error"),
+    CONTINGENCY("Contingency");
 
     private final String description;
 }

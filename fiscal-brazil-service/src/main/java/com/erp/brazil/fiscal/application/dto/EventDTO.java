@@ -1,12 +1,12 @@
 package com.erp.brazil.fiscal.application.dto;
 
-import com.erp.brazil.fiscal.domain.model.NFEEvent;
-import com.erp.brazil.fiscal.domain.model.TaxCalculationResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * DTOs for domain events (consumed and published).
@@ -75,6 +75,21 @@ public class EventDTO {
             LocalDateTime cancelledAt
     ) {}
 
+    @Schema(description = "NF-e inutilized event - published to message broker")
+    public record NFEInutilizedEvent(
+            String eventId,
+            String nfeId,
+            String accessKey,
+            LocalDateTime eventDate,
+            String companyId,
+            String series,
+            int startNumber,
+            int endNumber,
+            String justification,
+            String protocol,
+            String xmlContent
+    ) {}
+
     @Schema(description = "SPED generated event - published to message broker")
     public record SPEDGeneratedEvent(
             String eventId,
@@ -98,7 +113,7 @@ public class EventDTO {
             String ncm,
             String cfop,
             BigDecimal totalTaxes,
-            TaxCalculationResult result,
+            com.erp.brazil.fiscal.domain.model.TaxCalculationResult result,
             LocalDateTime calculatedAt
     ) {}
 
@@ -134,7 +149,7 @@ public class EventDTO {
             String companyName,
             LocalDateTime expiryDate,
             int daysUntilExpiry,
-            CertificadoDigitalA1.CertificateStatus status,
+            com.erp.brazil.fiscal.domain.model.CertificateStatus status,
             LocalDateTime alertedAt
     ) {}
 
@@ -148,5 +163,22 @@ public class EventDTO {
             int taxRulesUpdated,
             LocalDateTime syncedAt,
             String status
+    ) {}
+
+    // Request events (consumed)
+    public record NFECancelRequest(
+            String eventId,
+            String accessKey,
+            String protocol,
+            String justification,
+            String companyId
+    ) {}
+
+    public record SPEDGenerateRequest(
+            String eventId,
+            String companyId,
+            String type,
+            LocalDate startDate,
+            LocalDate endDate
     ) {}
 }

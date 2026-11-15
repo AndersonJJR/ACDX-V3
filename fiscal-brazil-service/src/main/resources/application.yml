@@ -1,0 +1,222 @@
+spring:
+  application:
+    name: fiscal-brazil-service
+
+  # JPA/Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: America/Sao_Paulo
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    baseline-description: "Initial schema"
+    validate-on-migrate: true
+
+  # Jackson
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      adjust-dates-to-context-time-zone: true
+    time-zone: America/Sao_Paulo
+
+  # RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-interval: 10000
+        multiplier: 2
+
+  # Cache (Redis)
+  cache:
+    type: redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  # MongoDB (for audit logs, large documents)
+  data:
+    mongodb:
+      host: ${MONGO_HOST:localhost}
+      port: ${MONGO_PORT:27017}
+      database: ${MONGO_DB:fiscal_brazil}
+      username: ${MONGO_USER:}
+      password: ${MONGO_PASS:}
+      authentication-database: admin
+
+  # Quartz Scheduler
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    properties:
+      org.quartz.scheduler.instanceName: FiscalScheduler
+      org.quartz.scheduler.instanceId: AUTO
+      org.quartz.threadPool.threadCount: 10
+      org.quartz.jobStore.class: org.quartz.impl.jdbcjobstore.JobStoreTX
+      org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+      org.quartz.jobStore.tablePrefix: QRTZ_
+      org.quartz.jobStore.isClustered: true
+      org.quartz.jobStore.clusterCheckinInterval: 20000
+
+# Server
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,flyway,scheduledtasks,caches
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  packages-to-scan: com.erp.brazil.fiscal.presentation.rest
+
+# Logging
+logging:
+  level:
+    com.erp.brazil.fiscal: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/fiscal-brazil-service.log
+    max-size: 100MB
+    max-history: 30
+
+# Custom properties
+fiscal:
+  # SEFAZ
+  sefaz:
+    default-environment: ${SEFAZ_ENV:homologation}
+    timeout-connect: 30000
+    timeout-read: 60000
+    max-retries: 3
+
+  # Certificado Digital
+  certificado:
+    master-encryption-key: ${MASTER_ENCRYPTION_KEY:}
+    default-renewal-alert-days: 30
+
+  # SPED
+  sped:
+    output-directory: ${SPED_OUTPUT_DIR:/tmp/sped}
+    encoding: ISO-8859-1
+
+  # Leis Sync
+  leis:
+    sync:
+      ncm-url: https://raw.githubusercontent.com/ctresb/leis/main/ncm.csv
+      cest-url: https://raw.githubusercontent.com/ctresb/leis/main/cest.csv
+      cfop-url: https://raw.githubusercontent.com/ctresb/leis/main/cfop.csv
+      tax-rules-url: https://raw.githubusercontent.com/ctresb/leis/main/tax-rules.csv
+      enabled: true
+
+  # Messaging
+  messaging:
+    exchange: fiscal.events
+    routing-key:
+      prefix: fiscal
+    queue:
+      invoice-created: fiscal.invoice.created
+      nfe-cancel-request: fiscal.nfe.cancel.request
+      sped-generate-request: fiscal.sped.generate.request
+
+# Resilience4j
+resilience4j:
+  circuitbreaker:
+    instances:
+      sefaz:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30000
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+  retry:
+    instances:
+      sefaz:
+        maxAttempts: 3
+        waitDuration: 2000
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - org.springframework.web.client.RestClientException
+
+# Async executors
+spring:
+  task:
+    execution:
+      pool:
+        core-size: 10
+        max-size: 50
+        queue-capacity: 100
+      thread-name-prefix: fiscal-async-
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: fiscal-sched-

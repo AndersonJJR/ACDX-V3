@@ -1,7 +1,7 @@
 package com.erp.brazil.fiscal.domain.repository;
 
 import com.erp.brazil.fiscal.domain.model.CertificadoDigitalA1;
-import com.erp.brazil.fiscal.domain.model.CertificadoStatus;
+import com.erp.brazil.fiscal.domain.model.CertificateStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,9 +15,9 @@ public interface CertificadoDigitalA1Repository extends MongoRepository<Certific
 
     List<CertificadoDigitalA1> findByCompanyCnpj(String companyCnpj);
 
-    List<CertificadoDigitalA1> findByCompanyCnpjAndStatus(String companyCnpj, CertificadoStatus status);
+    List<CertificadoDigitalA1> findByCompanyCnpjAndStatus(String companyCnpj, CertificateStatus status);
 
-    List<CertificadoDigitalA1> findByStatus(CertificadoStatus status);
+    List<CertificadoDigitalA1> findByStatus(CertificateStatus status);
 
     List<CertificadoDigitalA1> findByNotAfterBefore(LocalDate date);
 

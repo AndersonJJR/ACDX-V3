@@ -1,6 +1,9 @@
 package com.erp.brazil.fiscal.application.dto;
 
+import com.erp.brazil.fiscal.domain.model.CertificateStatus;
 import com.erp.brazil.fiscal.domain.model.CertificadoDigitalA1;
+import com.erp.brazil.fiscal.domain.model.IntegracaoFiscal;
+import com.erp.brazil.fiscal.domain.model.IntegracaoTipo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,7 +33,7 @@ public class CertificadoDigitalDTO {
             String cnpj,
             String companyName,
             LocalDate expiryDate,
-            CertificadoDigitalA1.CertificateStatus status,
+            CertificateStatus status,
             int daysUntilExpiry,
             java.time.LocalDateTime registeredAt
     ) {}
@@ -51,7 +54,7 @@ public class CertificadoDigitalDTO {
             String cnpj,
             String companyName,
             LocalDate expiryDate,
-            CertificadoDigitalA1.CertificateStatus status,
+            CertificateStatus status,
             int daysUntilExpiry,
             String serialNumber,
             String issuer,
@@ -80,7 +83,7 @@ public class CertificadoDigitalDTO {
     @Schema(description = "Certificate test request")
     public record TestRequest(
             @NotBlank String certificateId,
-            @NotNull IntegracaoFiscalDTO.IntegrationType type
+            @NotNull IntegracaoTipo type
     ) {}
 
     @Schema(description = "Certificate test response")

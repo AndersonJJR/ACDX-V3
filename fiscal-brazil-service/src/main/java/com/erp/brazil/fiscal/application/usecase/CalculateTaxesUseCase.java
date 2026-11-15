@@ -148,7 +148,6 @@ public class CalculateTaxesUseCase {
                 }
             } catch (Exception e) {
                 // Log error but continue with other rules
-                // In production, use proper logging framework
                 System.err.println("Error calculating tax rule " + rule.getId() + ": " + e.getMessage());
             }
         }
